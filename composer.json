@@ -22,8 +22,8 @@
         }
     ],
     "require": {
-        "php": "^5.5.9 || ^7.0",
-        "lcobucci/jwt": "^3.2"
+        "php": "^7.0",
+        "nesbot/carbon": "^2.25"
     },
     "autoload": {
         "psr-4": {

@@ -1,10 +1,10 @@
 <?php
 
-namespace Leo\JWT;
+namespace Leo\SLA;
 
 use Exception;
 
-class TokenException extends Exception
+class SLAException extends Exception
 {
     //
 }
