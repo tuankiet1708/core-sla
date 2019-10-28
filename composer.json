@@ -1,0 +1,48 @@
+{
+    "name": "leo/core-sla",
+    "description": "SLA Calculator",
+    "keywords": [
+        "sla",
+        "service-level agreement",
+        "itil",
+        "itsm"      
+    ],
+    "homepage": "https://github.com/tuankiet1708/core-sla",
+    "support": {
+        "issues": "https://github.com/tuankiet1708/core-sla/issues",
+        "source": "https://github.com/tuankiet1708/core-sla"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Leo Loves Coding",
+            "email": "tuankiet1708@gmail.com",
+            "homepage": "https://tranletuankiet.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^5.5.9 || ^7.0",
+        "lcobucci/jwt": "^3.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Leo\\SLA\\": "src/"
+        },
+        "files": [
+            "src/utilities/helpers.php"
+        ]
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-develop": "1.0-dev"
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist",
+        "optimize-autoloader": true
+    },
+    "prefer-stable": true,
+    "minimum-stability": "dev"
+}
