@@ -6,6 +6,20 @@ use Carbon\Carbon;
 
 class Calendar {
     /**
+     * Constant of Weekdays
+     * @var array
+     */
+    public const WEEK_MAP = [
+        7 => Carbon::SUNDAY,        
+        1 => Carbon::MONDAY,
+        2 => Carbon::TUESDAY,
+        3 => Carbon::WEDNESDAY,
+        4 => Carbon::THURSDAY,
+        5 => Carbon::FRIDAY,
+        6 => Carbon::SATURDAY
+    ];
+
+    /**
      * Calendar configuration
      * 
      * @var array
@@ -35,18 +49,23 @@ class Calendar {
     /**
      * Check whether a date is holiday
      * 
-     * @param Carbon $haystack
+     * @param Carbon|int $haystack
      * @return bool
      */
-    public function isHoliday(Carbon $haystack = null) : bool
+    public function isHoliday($haystack = null) : bool
     {
+        // When type of calendar is 247, all days are working days.
         if ($this->is247Calendar()) return false;
 
-        // @todo: check with $haystack
-        if (!empty($haystack)) return false;
+        if (!empty($haystack)) {
+            if (! $haystack instanceof Carbon) {
+                $haystack = $this->createCarbonFromTimestamp($haystack);
+            }
+        }
 
-        // now
-        $time = Carbon::now($this->timezone());
+        // now or taking time from haystack 
+        $time = $haystack ?? Carbon::now($this->timezone());
+
         // only need date, no nead time
         $time->hour = 0; $time->minute = 0; $time->second = 0;
 
@@ -62,12 +81,29 @@ class Calendar {
         return false;
     }
 
-    public function isWorkingDay(Carbon $haystack = null) : bool
+    public function isWorkingDay($haystack = null) : bool
     {
+        // When type of calendar is 247, all days are working days.
         if ($this->is247Calendar()) return true;
 
-        // @todo: check with $haystack
-        if (!empty($haystack)) return false;
+        if (!empty($haystack)) {
+            if (! $haystack instanceof Carbon) {
+                $haystack = $this->createCarbonFromTimestamp($haystack);
+            }
+        }
+        
+        // now or taking time from haystack 
+        $time = $haystack ?? Carbon::now($this->timezone());
+
+        // it's a holiday.
+        if ($this->isHoliday($time)) return false;
+
+        // parse workdays
+        $workdays = $this->parseWorkdays();
+
+        foreach ($workdays as $day) {
+            if ($time->dayOfWeek === $day['day']) return true;
+        }
 
         return false;
     }
@@ -92,24 +128,53 @@ class Calendar {
         return array_get($this->config, 'type') === 'custom';
     }
 
-    public function isTimeToTakeARest(Carbon $haystack = null) : bool
+    public function isTimeToTakeARest($haystack = null) : bool
     {
+        // When type of calendar is 247, all days are working days.
         if ($this->is247Calendar()) return true;
 
         // @todo: check with $haystack
-        if (!empty($haystack)) return false;
+        if (!empty($haystack)) {
+            if (!$haystack instanceof Carbon) {
+                $haystack = $this->createCarbonFromTimestamp($haystack);
+            }
+            
+            return false;
+        }
 
         return false;
     }
 
-    public function isTimeToWork(Carbon $haystack = null) : bool
+    public function isTimeToWork($haystack = null) : bool
     {
         if ($this->is247Calendar()) return true;
 
         // @todo: check with $haystack
-        if (!empty($haystack)) return false;
+        if (!empty($haystack)) {
+            if (!$haystack instanceof Carbon) {
+                $haystack = $this->createCarbonFromTimestamp($haystack);
+            }
+            
+            return false;
+        }
 
         return false;
+    }
+
+    /**
+     * Parse work days
+     * 
+     * @return array
+     */
+    public function parseWorkdays() : array
+    {
+        $workdays = (array) array_get($this->config, 'work_week');
+
+        foreach ($workdays as $index => $day) {
+            $workdays[$index]['day'] = self::WEEK_MAP[$day['day']];
+        }
+
+        return $workdays;
     }
 
     /**
@@ -140,5 +205,16 @@ class Calendar {
         }
 
         return array_merge($holidays, $additionalYearlyHolidays);
+    }
+
+    /**
+     * Create a Carbon instance from timestamp
+     * 
+     * @param int $timestamp
+     * @return Carbon
+     */
+    public function createCarbonFromTimestamp(int $timestamp) : Carbon
+    {
+        return Carbon::createFromTimestamp($timestamp, $this->timezone());
     }
 }
