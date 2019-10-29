@@ -10,7 +10,7 @@ return [
         */
     
         "8_5_calendar" => [
-            // . The value of "type" consists only 2 options: custom, 247.
+            // . The value of "type" consists of 2 options: custom, 247.
             "type" => "custom", 
             // . The value of "timezone" listed at https://timezonedb.com/time-zones
             "timezone" => "Asia/Singapore",  
@@ -111,7 +111,7 @@ return [
             ],
             "holidays" => [
                 // . The value of "date" is formatted as yyyy-mm-dd.
-                // . The value of "repeat" consists only 2 options: yearly, never.
+                // . The value of "repeat" consists of 2 options: yearly, never.
                 [
                     "name" => "Happy New Year", 
                     "date" => "2019-01-01", 
@@ -132,7 +132,7 @@ return [
         ],
 
         "default" => [
-            // . The value of "type" consists only 2 options: custom, 247.
+            // . The value of "type" consists of 2 options: custom, 247.
             "type" => "247",       
             // . The value of "timezone" listed at https://timezonedb.com/time-zones
             "timezone" => "Asia/Singapore", 
