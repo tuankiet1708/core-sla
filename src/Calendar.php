@@ -71,7 +71,7 @@ class Calendar {
         $time->hour = 0; $time->minute = 0; $time->second = 0;
 
         // convert to Carbon
-        $holidays = $this->parseHolidays();
+        $holidays = $this->parseHolidays($time);
 
         foreach ($holidays as $date) {
             if ($time->equalTo($date['date'])) {
@@ -216,7 +216,7 @@ class Calendar {
      * @param array $range
      * @return bool
      */
-    public function isInRange($haystack, array $range) : bool
+    protected function isInRange($haystack, array $range) : bool
     {
         if (count($range) !== 2) {
             throw new CalendarTimeRangeException;
@@ -266,7 +266,7 @@ class Calendar {
      * 
      * @return array
      */
-    public function parseWorkdays() : array
+    protected function parseWorkdays() : array
     {
         $workdays = (array) array_get($this->config, 'work_week');
 
@@ -280,14 +280,15 @@ class Calendar {
     /**
      * Parse holidays
      * 
+     * @param Carbon $time
      * @return array
      */
-    public function parseHolidays() : array
+    protected function parseHolidays(Carbon $time = null) : array
     {
         $holidays = (array) array_get($this->config, 'holidays');
 
         // current year
-        $currentYear = Carbon::now($this->timezone())->year;
+        $currentYear = $time ? $time->year : Carbon::now($this->timezone())->year;
 
         // pool array for yearly holidays 
         $additionalYearlyHolidays = [];
