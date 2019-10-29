@@ -57,7 +57,7 @@ class Calendar {
         // When type of calendar is 247, all days are working days.
         if ($this->is247Calendar()) return false;
 
-        if (!empty($haystack)) {
+        if (! empty($haystack)) {
             if (! $haystack instanceof Carbon) {
                 $haystack = $this->createCarbonFromTimestamp($haystack);
             }
@@ -86,7 +86,7 @@ class Calendar {
         // When type of calendar is 247, all days are working days.
         if ($this->is247Calendar()) return true;
 
-        if (!empty($haystack)) {
+        if (! empty($haystack)) {
             if (! $haystack instanceof Carbon) {
                 $haystack = $this->createCarbonFromTimestamp($haystack);
             }
@@ -134,8 +134,8 @@ class Calendar {
         if ($this->is247Calendar()) return true;
 
         // @todo: check with $haystack
-        if (!empty($haystack)) {
-            if (!$haystack instanceof Carbon) {
+        if (! empty($haystack)) {
+            if (! $haystack instanceof Carbon) {
                 $haystack = $this->createCarbonFromTimestamp($haystack);
             }
             
@@ -150,8 +150,8 @@ class Calendar {
         if ($this->is247Calendar()) return true;
 
         // @todo: check with $haystack
-        if (!empty($haystack)) {
-            if (!$haystack instanceof Carbon) {
+        if (! empty($haystack)) {
+            if (! $haystack instanceof Carbon) {
                 $haystack = $this->createCarbonFromTimestamp($haystack);
             }
             
