@@ -114,14 +114,15 @@ return [
                 // . The value of "repeat" consists only 2 options: yearly, never.
                 [
                     "name" => "Happy New Year", 
-                    "date" => "2020-01-01", 
+                    "date" => "2019-01-01", 
                     "repeat" => "yearly"
                 ], 
                 [
                     "name" => "A day as Lunar New Year", 
                     "date" => "2020-01-25", 
                     "repeat" => "never"
-                ],[
+                ],
+                [
                     "name" => "Extra test", 
                     "date" => "2019-10-28", 
                     "repeat" => "never"

@@ -1,10 +1,10 @@
 <?php
 
-namespace Leo\SLA;
+namespace Leo\SLA\Exceptions;
 
 use Exception;
 
 class SLAException extends Exception
 {
-    //
+
 }
