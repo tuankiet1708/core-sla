@@ -122,7 +122,7 @@ return [
                 // . The value of "repeat" consists of 2 options: yearly, never.
                 [
                     "name" => "Happy New Year", 
-                    "date" => "2019-01-01", 
+                    "date" => "2000-01-01", 
                     "repeat" => "yearly"
                 ], 
                 [
