@@ -4,7 +4,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use Leo\SLA\Calendar;
 use Carbon\Carbon;
 
-$config = config_get('sla.8_5_calendar');
+$config = config_get('calendar.8_5_calendar');
 $calendar = new Calendar($config); 
 
 // $time = Carbon::createFromTimestamp(time(), $calendar->timezone());
