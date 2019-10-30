@@ -632,3 +632,18 @@ if (! function_exists('dd')) {
         die(1);
     }
 }
+
+if (! function_exists('load_view_path')) {
+    /**
+     * Load view with a given file path and an argument.
+     *
+     * @param   string $view
+     * @param   array $argument
+     * @return  mixed
+     */
+    function load_view_path(string $view, array $argument = [])
+    {
+        extract($argument);
+        include_once($view);
+    }
+}

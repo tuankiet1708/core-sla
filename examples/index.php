@@ -1,17 +1,21 @@
 <?php
+require_once __DIR__ . '/../vendor/autoload.php';
 
 use Leo\SLA\Calendar;
 use Carbon\Carbon;
-
-require_once __DIR__ . '/../vendor/autoload.php';
 
 $config = config_get('sla.8_5_calendar');
 $calendar = new Calendar($config); 
 
 // $time = Carbon::createFromTimestamp(time(), $calendar->timezone());
-$time = Carbon::parse('2000-01-01 08:00', $calendar->timezone());
+$time = Carbon::parse('2019-01-01 00:00', $calendar->timezone());
 
-echo "<pre>";
+// Table of holidays
+load_view_path(__DIR__ . '/holidays_table.php', compact('calendar', 'time'));
+// Table of workdays
+load_view_path(__DIR__ . '/workdays_table.php', compact('calendar', 'time'));
+
+echo "<pre style='font-size:18'>";
 echo "<b>Kind of calendar</b>: " . ($calendar->is247Calendar() ? "247" : "custom");
 echo "\n";
 echo "<b>Timezone</b>: " . $calendar->timezone();

@@ -108,6 +108,14 @@ return [
                         ]
                     ]
                 ],
+                [
+                    "day" => 6, // Saturday
+                    "from_hour" => 8, 
+                    "from_minute" => 0, 
+                    "to_hour" => 12, 
+                    "to_minute" => 0, 
+                    "break" => null
+                ],
             ],
             "holidays" => [
                 // . The value of "date" is formatted as yyyy-mm-dd.

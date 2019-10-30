@@ -271,7 +271,7 @@ class Calendar {
         $workdays = (array) array_get($this->config, 'work_week');
 
         foreach ($workdays as $index => $day) {
-            $workdays[$index]['day'] = self::WEEK_MAP[$day['day']];
+            $workdays[$index]['day'] = self::WEEK_MAP[$day['day']] ?? -1;
         }
 
         return $workdays;
@@ -307,11 +307,42 @@ class Calendar {
 
                 // repeat the holiday for current year
                 $clone['date']->year = $currentYear;
+                $clone['additional_repeat'] = true;
                 $additionalYearlyHolidays[] = $clone;
             }
         }
 
         return array_merge($holidays, $additionalYearlyHolidays);
+    }
+
+    /**
+     * Get workdays
+     * 
+     * @return array
+     */
+    public function getWorkdays() : array 
+    {
+        return $this->parseWorkdays();
+    }
+
+    /**
+     * Get holidays
+     * 
+     * @param Carbon|int $haystack
+     * @return array
+     */
+    public function getHolidays($haystack = null) : array
+    {
+        if (! empty($haystack)) {
+            if (! $haystack instanceof Carbon) {
+                $haystack = $this->createCarbonFromTimestamp($haystack);
+            }
+        }
+
+        // now or taking time from haystack 
+        $time = $haystack ? $haystack->copy() : Carbon::now($this->timezone());
+
+        return $this->parseHolidays($time);
     }
 
     /**
