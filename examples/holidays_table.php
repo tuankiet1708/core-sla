@@ -8,7 +8,7 @@
     <tbody>
         <?php foreach ($calendar->getHolidays($time) as $date) { ?>
         
-            <tr <?php echo ($date['additional_repeat'] ?? false) ? 'style="color:red;font-weight:bold"' : '' ?> >
+            <tr <?php echo (!empty($holidayMatches) && $holidayMatches[0]['date']->equalTo($date['date'])) ? 'style="color:red;font-weight:bold"' : '' ?> >
                 <td>
                     <?php echo $date['date']->toDateString() ?>
                 </td>
@@ -18,7 +18,7 @@
                 </td>
 
                 <td>
-                    <?php echo $date['repeat'] . ( ($date['additional_repeat'] ?? false) ? ' (+)' : '' ) ?>
+                    <?php echo $date['repeat'] ?>
                 </td>
             </tr>  
         

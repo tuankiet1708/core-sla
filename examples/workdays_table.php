@@ -21,25 +21,70 @@
                             case 0: $d = 'Sunday'; break;
                             default: $d = 'N/A';
                         }
-                        echo $d;
+
+                        if (
+                            $dayMatched = (
+                                !empty($workdayMatches) 
+                                && $workdayMatches[0]['day'] == $day['day']
+                            )
+                        ) {
+                            echo '<span style="font-weight:bold; color:red;">' . $d . '</span>';
+                        } else {
+                            echo $d;
+                        }
                     ?>
                 </td>
 
                 <td>
-                    <?php echo str_pad($day['from_hour'], 2, '0', STR_PAD_LEFT) . ':' .
+                    <?php 
+                        if (
+                            $check = ($isTimeToWork && !empty($timeMatches) 
+                                && $timeMatches[0]['from_hour'] == $day['from_hour']
+                                && $timeMatches[0]['from_minute'] == $day['from_minute']
+                                && $timeMatches[0]['to_hour'] == $day['to_hour']
+                                && $timeMatches[0]['to_minute'] == $day['to_minute']
+                            ) 
+                            && 
+                            $dayMatched
+                        ) {
+                            echo '<span style="font-weight:bold; color:red;">';
+                        }
+
+                        echo   str_pad($day['from_hour'], 2, '0', STR_PAD_LEFT) . ':' .
                                str_pad($day['from_minute'], 2, '0', STR_PAD_LEFT) . ' - ' . 
                                str_pad($day['to_hour'], 2, '0', STR_PAD_LEFT) . ':' .
-                               str_pad($day['to_minute'], 2, '0', STR_PAD_LEFT)
+                               str_pad($day['to_minute'], 2, '0', STR_PAD_LEFT);
+                        
+                        if ($check) {
+                            echo '</span>';
+                        }
                     ?>
                 </td>
 
                 <td>
                     <?php 
                         foreach ((array) array_get($day, 'break') as $time) {
+                            if (
+                                $check = ($isTimeToTakeARest && !empty($breakMatches[1]) 
+                                    && $breakMatches[1][0]->hour == $time['from_hour']
+                                    && $breakMatches[1][0]->minute == $time['from_minute']
+                                    && $breakMatches[1][1]->hour == $time['to_hour']
+                                    && $breakMatches[1][1]->minute == $time['to_minute']
+                                ) 
+                                && 
+                                $dayMatched
+                            ) {
+                                echo '<span style="font-weight:bold; color:red;">';
+                            }
+
                             echo str_pad($time['from_hour'], 2, '0', STR_PAD_LEFT) . ':' .
                                str_pad($time['from_minute'], 2, '0', STR_PAD_LEFT) . ' - ' . 
                                str_pad($time['to_hour'], 2, '0', STR_PAD_LEFT) . ':' .
-                               str_pad($time['to_minute'], 2, '0', STR_PAD_LEFT) . '<br/>';                            
+                               str_pad($time['to_minute'], 2, '0', STR_PAD_LEFT) . '<br/>';       
+                               
+                            if ($check) {
+                                echo '</span>';
+                            }
                         }
                     ?>
                 </td>

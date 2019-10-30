@@ -13,7 +13,7 @@ return [
             // . The value of "type" consists of 2 options: custom, 247.
             "type" => "custom", 
             // . The value of "timezone" listed at https://timezonedb.com/time-zones
-            "timezone" => "Asia/Singapore",  
+            "timezone" => "Asia/Ho_Chi_Minh",  
 
             // . Other extra values
             "code" => "8_5_calendar", 

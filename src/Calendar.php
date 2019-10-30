@@ -51,9 +51,10 @@ class Calendar {
      * Check whether a date is holiday
      * 
      * @param Carbon|int $haystack
+     * @param Carbon|null $matches
      * @return bool
      */
-    public function isHoliday($haystack = null) : bool
+    public function isHoliday($haystack = null, &$matches = null) : bool
     {
         // When type of calendar is 247, all days are working days.
         if ($this->is247Calendar()) return false;
@@ -75,6 +76,7 @@ class Calendar {
 
         foreach ($holidays as $date) {
             if ($time->equalTo($date['date'])) {
+                $matches[] = $date;
                 return true;
             }
         }
@@ -86,9 +88,10 @@ class Calendar {
      * Check whether a day is a working day
      * 
      * @param Carbon|int $haystack
+     * @param Carbon|null $matches
      * @return bool
      */
-    public function isWorkingDay($haystack = null) : bool
+    public function isWorkingDay($haystack = null, &$matches = null) : bool
     {
         // When type of calendar is 247, all days are working days.
         if ($this->is247Calendar()) return true;
@@ -110,6 +113,7 @@ class Calendar {
 
         foreach ($workdays as $day) {
             if ($time->dayOfWeek === $day['day']) {
+                $matches[] = $day;
                 return true;
             }
         }
@@ -141,9 +145,10 @@ class Calendar {
      * Check whether it is time to take a rest
      * 
      * @param Carbon|int $haystack
+     * @param Carbon|null &$matches
      * @return bool
      */
-    public function isTimeToTakeARest($haystack = null) : bool
+    public function isTimeToTakeARest($haystack = null, &$matches = null) : bool
     {
         // When type of calendar is 247, all days are working days.
         if ($this->is247Calendar()) return false;
@@ -157,16 +162,17 @@ class Calendar {
         // now or taking time from haystack 
         $time = $haystack ? $haystack->copy() : Carbon::now($this->timezone());
 
-        return ! $this->isTimeToWork($time);
+        return ! $this->isTimeToWork($time, $matches);
     }
 
     /**
      * Check whether it is time to work
      * 
      * @param Carbon|int $haystack
+     * @param Carbon|null &$matches
      * @return bool
      */
-    public function isTimeToWork($haystack = null) : bool
+    public function isTimeToWork($haystack = null, &$matches = null) : bool
     {
         // When type of calendar is 247, all days are working days.
         if ($this->is247Calendar()) return true;
@@ -181,7 +187,7 @@ class Calendar {
         $time = $haystack ? $haystack->copy() : Carbon::now($this->timezone());
 
         // it's not a working day.
-        if (! $this->isWorkingDay($time)) return false;
+        if (! $this->isWorkingDay($time, $matches)) return false;
 
         // parse workdays
         $workdays = $this->parseWorkdays();
@@ -195,7 +201,9 @@ class Calendar {
         $range = $this->generateCarbonRangeOfTime($time, $dayToCheck);
 
         // the given time is not in range of working time.
-        if (! $this->isInRange($time, $range)) return false;
+        if (! $this->isInRange($time, $range)) {
+            return false;
+        }
 
         // generate Carbon ranges of break time hours
         $break = (array) array_get($dayToCheck, 'break');
@@ -203,7 +211,10 @@ class Calendar {
             $range = $this->generateCarbonRangeOfTime($time, $breakRange);
 
             // the given time is in range of break time.
-            if ($this->isInRange($time, $range)) return false;
+            if ($this->isInRange($time, $range)) {
+                $matches[] = $range;
+                return false;
+            }
         }
 
         return true;
