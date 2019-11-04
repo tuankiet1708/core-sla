@@ -130,11 +130,11 @@ return [
                     "date" => "2020-01-25", 
                     "repeat" => "never"
                 ],
-                [
-                    "name" => "Extra test", 
-                    "date" => "2019-10-28", 
-                    "repeat" => "never"
-                ]
+                // [
+                //     "name" => "Extra test", 
+                //     "date" => "2019-10-28", 
+                //     "repeat" => "never"
+                // ]
 
             ]
         ],

@@ -33,3 +33,16 @@ echo "Is it time for a <b>break</b>? " . json_encode($isTimeToTakeARest = $calen
 load_view_path(__DIR__ . '/holidays_table.php', compact('calendar', 'time', 'holidayMatches'));
 // Table of workdays
 load_view_path(__DIR__ . '/workdays_table.php', compact('calendar', 'time', 'workdayMatches', 'timeMatches', 'breakMatches', 'isWorkingDay', 'isTimeToWork', 'isTimeToTakeARest'));
+
+$from = 1572220800; // Monday, 2019-10-28 07:00
+$to = 1572433200; // Wednesday, 2019-10-30 18:00
+
+// $elapse = $calendar->elapseSeconds($from, Carbon::now());
+// $secondsForHumans = $calendar->secondsForHumans($elapse);
+
+// dd($calendar->createCarbonFromTimestamp($from), $calendar->createCarbonFromTimestamp($to));
+
+$elapse = $calendar->elapseSecondsInWokingTime($from, $to);
+$secondsForHumans = $calendar->secondsForHumans($elapse);
+
+dd($secondsForHumans);

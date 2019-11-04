@@ -3,6 +3,7 @@
 namespace Leo\SLA;
 
 use Carbon\Carbon;
+use Carbon\CarbonInterval;
 use Leo\SLA\Exceptions\CalendarTimeRangeException;
 
 class Calendar {
@@ -365,5 +366,210 @@ class Calendar {
     public function createCarbonFromTimestamp(int $timestamp) : Carbon
     {
         return Carbon::createFromTimestamp($timestamp, $this->timezone());
+    }
+
+    /**
+     * Seconds For Humans
+     * 
+     * @param int $seconds
+     * @return string
+     */
+    public function secondsForHumans(int $seconds) : string
+    {
+        return CarbonInterval::seconds($seconds)->cascade()->forHumans();
+    }
+
+    /**
+     * Time elapse in seconds
+     * 
+     * @param Carbon|int $from
+     * @param Carbon|int $to
+     * @return int
+     */
+    public function elapseSeconds($from, $to) : int
+    {
+        if (! $from instanceof Carbon) {
+            $from = $this->createCarbonFromTimestamp($from);
+        }
+
+        if (! $to instanceof Carbon) {
+            $to = $this->createCarbonFromTimestamp($to);
+        }
+
+        return $from->diffInSeconds($to, false);
+    } 
+
+    /**
+     * Working time elapse in seconds
+     * 
+     * @param Carbon|int $from
+     * @param Carbon|int $to
+     * @return int
+     */
+    public function elapseSecondsInWokingTime($from, $to) : int 
+    {
+        if (! $from instanceof Carbon) {
+            $from = $this->createCarbonFromTimestamp($from);
+        }
+
+        if (! $to instanceof Carbon) {
+            $to = $this->createCarbonFromTimestamp($to);
+        }
+
+        // collect dates consist of working hours
+        $dates = [];
+        while (true) {
+            $date = isset($date) ? $date->addDay() : $from->copy();
+            $date->hour = 0; $date->minute = 0; $date->second = 0;
+
+            if ($date->diffInSeconds($to, false) < 0) break;
+
+            $dates[] = $date->copy();
+        }
+
+        // for 247 calendar
+        if ($this->is247Calendar()) {
+            return $this->calculateElapseSecondsInWokingTimeFor247Calendar($from, $to, $dates);
+        }
+
+        // for custom calendar
+        return $this->calculateElapseSecondsInWokingTimeForCustomCalendar($from, $to, $dates); 
+    }
+
+    protected function getElapsedSecondsOnFirstDay(Carbon $from, Carbon $to, array $config) : array
+    {
+        list($secondsIncludes, $secondsExcludes) = $this->getElapsedSecondsOnFullDay($from, $to, $config);
+
+        return [$secondsIncludes, $secondsExcludes];
+    }
+
+    protected function getElapsedSecondsOnFinalDay(Carbon $from, Carbon $to, array $config) : array
+    {
+        list($secondsIncludes, $secondsExcludes) = $this->getElapsedSecondsOnFullDay($from, $to, $config);
+
+        return [$secondsIncludes, $secondsExcludes];
+    }
+
+    protected function getElapsedSecondsOnFullDay(Carbon $from, Carbon $to, array $config) : array
+    {
+        $secondsExcludes = $secondsIncludes = [];
+
+        $secondsIncludes[] = $this->diffInSecondsByFromToHourMinute($config);
+
+        foreach ((array) array_get($config, 'break') as $break) {
+            $secondsExcludes[] = $this->diffInSecondsByFromToHourMinute($break);
+        }
+
+        return [$secondsIncludes, $secondsExcludes];
+    }
+
+    /**
+     * calculateElapseSecondsInWokingTimeForCustomCalendar
+     * 
+     * @param Carbon $from
+     * @param Carbon $to
+     * @param array $dates
+     * @return int
+     */
+    protected function calculateElapseSecondsInWokingTimeForCustomCalendar(Carbon $from, Carbon $to, array $dates) : int
+    {
+        // for making an exclusion of no working seconds
+        $secondsExcludes = [];
+        
+        // for making a sum of working seconds
+        $secondsIncludes = [];
+
+        foreach ($dates as $index => $date) {
+            // reset
+            $matches = [];
+
+            if (! $this->isWorkingDay($date, $matches)) continue;
+
+            if ($index === 0) {
+                list($includes, $excludes) = $this->getElapsedSecondsOnFirstDay($from, $to, $matches[0]);
+            }
+            elseif ($index === count($dates) - 1) {
+                list($includes, $excludes) = $this->getElapsedSecondsOnFinalDay($from, $to, $matches[0]);
+            }
+            else {
+                list($includes, $excludes) = $this->getElapsedSecondsOnFullDay($from, $to, $matches[0]);
+            }
+
+            var_dump(">>>>>>>>");
+            var_dump($date, $includes, $excludes);
+
+            $secondsExcludes = array_merge($secondsExcludes, $excludes);
+            $secondsIncludes = array_merge($secondsIncludes, $includes);
+            var_dump("=========");
+        }
+
+        dd($dates, $secondsExcludes, $secondsIncludes);
+
+        return $from->diffInSeconds($to, false);
+
+        return 0;
+    }
+
+    /**
+     * calculateElapseSecondsInWokingTimeFor247Calendar
+     * 
+     * @param Carbon $from
+     * @param Carbon $to
+     * @param array $dates
+     * @return int
+     */
+    protected function calculateElapseSecondsInWokingTimeFor247Calendar(Carbon $from, Carbon $to, array $dates) : int
+    {
+        // for making an exclusion of no working seconds
+        $secondsExcludes = [];
+                
+        // for making a sum of working seconds
+        $secondsIncludes = [];
+
+        foreach ($dates as $index => $date) {
+            $secondsIncludes[] = 86400; // seconds
+
+            if ($index === 0) {
+                $secondsExcludes[] = $date->diffInSeconds($from);
+            } 
+            elseif ($index === count($dates) - 1) {
+                $secondsExcludes[] = $date->copy()->addDay()->diffInSeconds($to);
+            }
+        }
+        
+        return array_sum($secondsIncludes) - array_sum($secondsExcludes);
+    }
+
+    /**
+     * diffInSecondsByFromToHourMinute
+     * 
+     * @param array $config
+     * $config under the format ['from_hour' => 8, 'from_minute' => 0, 'to_hour' => 17, 'to_minute' => 0]
+     * @param Carbon|int $date
+     * @return int
+     */
+    public function diffInSecondsByFromToHourMinute(array $config, $date = null) : int
+    {
+        if (! empty($date)) {
+            if (! $date instanceof Carbon) {
+                $date = $this->createCarbonFromTimestamp($date);
+            }
+        }
+
+        $time = $date ? $date->copy() : Carbon::now($this->timezone());
+
+        if ($time->hour != 0) $time->hour = 0;
+        if ($time->minute != 0) $time->minute = 0;
+        if ($time->second != 0) $time->second = 0;
+
+        $from = $time->copy()
+                     ->addHours($config['from_hour'])
+                     ->addMinutes($config['from_minute']);
+
+        $to = $time->copy()
+                   ->addHours($config['to_hour'])
+                   ->addMinutes($config['to_minute']);
+
+        return $from->diffInSeconds($to);
     }
 }
