@@ -45,6 +45,12 @@ return [
                             "from_minute" => 0, 
                             "to_hour" => 13, 
                             "to_minute" => 0
+                        ],
+                        [
+                            "from_hour" => 13, 
+                            "from_minute" => 30, 
+                            "to_hour" => 15, 
+                            "to_minute" => 0
                         ]
                     ]
                 ], 

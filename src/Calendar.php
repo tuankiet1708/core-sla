@@ -436,21 +436,7 @@ class Calendar {
         return $this->calculateElapseSecondsInWokingTimeForCustomCalendar($from, $to, $dates); 
     }
 
-    protected function getElapsedSecondsOnFirstDay(Carbon $from, Carbon $to, array $config) : array
-    {
-        list($secondsIncludes, $secondsExcludes) = $this->getElapsedSecondsOnFullDay($from, $to, $config);
-
-        return [$secondsIncludes, $secondsExcludes];
-    }
-
-    protected function getElapsedSecondsOnFinalDay(Carbon $from, Carbon $to, array $config) : array
-    {
-        list($secondsIncludes, $secondsExcludes) = $this->getElapsedSecondsOnFullDay($from, $to, $config);
-
-        return [$secondsIncludes, $secondsExcludes];
-    }
-
-    protected function getElapsedSecondsOnFullDay(Carbon $from, Carbon $to, array $config) : array
+    protected function getElapsedSecondsOnTimeBand(Carbon $from, Carbon $to, array $config) : array
     {
         $secondsExcludes = $secondsIncludes = [];
 
@@ -485,29 +471,158 @@ class Calendar {
 
             if (! $this->isWorkingDay($date, $matches)) continue;
 
-            if ($index === 0) {
-                list($includes, $excludes) = $this->getElapsedSecondsOnFirstDay($from, $to, $matches[0]);
-            }
-            elseif ($index === count($dates) - 1) {
-                list($includes, $excludes) = $this->getElapsedSecondsOnFinalDay($from, $to, $matches[0]);
-            }
-            else {
-                list($includes, $excludes) = $this->getElapsedSecondsOnFullDay($from, $to, $matches[0]);
-            }
-
-            var_dump(">>>>>>>>");
-            var_dump($date, $includes, $excludes);
+            list ($includes, $excludes) = $this->getElapsedSeconds($from, $to, $date, $matches[0]);
 
             $secondsExcludes = array_merge($secondsExcludes, $excludes);
             $secondsIncludes = array_merge($secondsIncludes, $includes);
-            var_dump("=========");
         }
 
-        dd($dates, $secondsExcludes, $secondsIncludes);
+        return array_sum($secondsIncludes) - array_sum($secondsExcludes);
+    }
 
-        return $from->diffInSeconds($to, false);
+    protected function getElapsedSeconds(Carbon $from, Carbon $to, Carbon $date, array $config) 
+    {
+        // $range = [
+        //     'from_hour' => 0,
+        //     'from_minute' => 0,
+        //     'to_hour' => 23,
+        //     'to_minute' => 59
+        // ];
+        $fromIsInRange = $this->isInRange($from, $this->generateCarbonRangeOfTime($date, $config));
+        $toIsInRange = $this->isInRange($to, $this->generateCarbonRangeOfTime($date, $config));
 
-        return 0;
+        $fromIsInRange = $from->diffInDays($date->copy()->addSecond()) === 0;
+        $toIsInRange = $to->diffInDays($date->copy()->addSecond()) === 0;
+
+        var_dump(">>>>>>>>", $fromIsInRange, $toIsInRange);
+
+        $breakTimes = [];
+
+        // Both of ($from + $to) are not in the range
+        if (! $fromIsInRange && ! $toIsInRange) {
+            $result = $this->getElapsedSecondsOnTimeBand($from, $to, $config);
+        }
+
+        // $from is in the range, but $to
+        elseif ( $fromIsInRange && ! $toIsInRange ) {
+            foreach ((array) array_get($config, 'break') as $index => $break) {
+                $breakTimeFrom = $date->copy();
+                $breakTimeFrom->addHours($break['from_hour'])->addMinutes($break['from_minute']);
+                
+                $breakTimeTo = $date->copy();
+                $breakTimeTo->addHours($break['to_hour'])->addMinutes($break['to_minute']);
+
+                if (
+                    $this->isInRange($from, $this->generateCarbonRangeOfTime($date, $break))
+                    && $from->diffInSeconds($breakTimeTo, false) > 0
+                ) {
+                    $breakTimes[] = array_merge($break, [
+                        'from_hour' => $from->hour,
+                        'from_minute' => $from->minute,
+                    ]);
+                }
+                elseif ($from->diffInSeconds($breakTimeFrom, false) >= 0) {
+                    $breakTimes[] = $break;
+                }                
+            }
+
+            $result = $this->getElapsedSecondsOnTimeBand($from, $to, array_merge($config, [
+                'from_hour' => $from->hour,
+                'from_minute' => $from->minute,
+                'break' => $breakTimes
+            ]));
+        }
+
+        // $to is in the range, but $from
+        elseif ( ! $fromIsInRange && $toIsInRange ) {
+            foreach ((array) array_get($config, 'break') as $index => $break) {
+                $breakTimeFrom = $date->copy();
+                $breakTimeFrom->addHours($break['from_hour'])->addMinutes($break['from_minute']);
+                
+                $breakTimeTo = $date->copy();
+                $breakTimeTo->addHours($break['to_hour'])->addMinutes($break['to_minute']);
+
+                if (
+                    $this->isInRange($to, $this->generateCarbonRangeOfTime($date, $break))
+                    && $to->diffInSeconds($breakTimeFrom, false) < 0
+                ) {
+                    $breakTimes[] = array_merge($break, [
+                        'to_hour' => $to->hour,
+                        'to_minute' => $to->minute,
+                    ]);
+                }
+                elseif ($to->diffInSeconds($breakTimeTo, false) <= 0) {
+                    $breakTimes[] = $break;
+                }                
+            }
+
+            $result = $this->getElapsedSecondsOnTimeBand($from, $to, array_merge($config, [
+                'to_hour' => $to->hour,
+                'to_minute' => $to->minute,
+                'break' => $breakTimes
+            ]));
+
+        }
+
+        // Both of ($from + $to) are in the range
+        else {
+            foreach ((array) array_get($config, 'break') as $index => $break) {
+                $breakTimeFrom = $date->copy();
+                $breakTimeFrom->addHours($break['from_hour'])->addMinutes($break['from_minute']);
+                
+                $breakTimeTo = $date->copy();
+                $breakTimeTo->addHours($break['to_hour'])->addMinutes($break['to_minute']);
+
+                if (
+                    $this->isInRange($from, $this->generateCarbonRangeOfTime($date, $break))
+                    && $this->isInRange($to, $this->generateCarbonRangeOfTime($date, $break))
+                ) {
+                    $breakTimes[] = array_merge($break, [
+                        'from_hour' => $from->hour,
+                        'from_minute' => $from->minute,
+                        'to_hour' => $to->hour,
+                        'to_minute' => $to->minute,
+                    ]);
+                }
+
+                elseif (
+                    $this->isInRange($from, $this->generateCarbonRangeOfTime($date, $break))
+                    && $from->diffInSeconds($breakTimeTo, false) > 0
+                ) {
+                    $breakTimes[] = array_merge($break, [
+                        'from_hour' => $from->hour,
+                        'from_minute' => $from->minute,
+                    ]);
+                }
+                elseif (
+                    $this->isInRange($to, $this->generateCarbonRangeOfTime($date, $break))
+                    && $to->diffInSeconds($breakTimeFrom, false) < 0
+                ) {
+                    $breakTimes[] = array_merge($break, [
+                        'to_hour' => $to->hour,
+                        'to_minute' => $to->minute,
+                    ]);
+                }
+                elseif (
+                    $from->diffInSeconds($breakTimeFrom, false) >= 0
+                    // || $to->diffInSeconds($breakTimeTo, false) <= 0
+                ) {
+                    $breakTimes[] = $break;
+                }                
+            }
+
+            $result = $this->getElapsedSecondsOnTimeBand($from, $to, array_merge($config, [
+                'from_hour' => $from->hour,
+                'from_minute' => $from->minute,
+                'break' => $breakTimes
+            ]));
+        }
+
+        
+        var_dump($breakTimes, $date);
+        var_dump("========");
+
+        return $result;
     }
 
     /**
