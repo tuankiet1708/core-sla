@@ -34,8 +34,8 @@ load_view_path(__DIR__ . '/holidays_table.php', compact('calendar', 'time', 'hol
 // Table of workdays
 load_view_path(__DIR__ . '/workdays_table.php', compact('calendar', 'time', 'workdayMatches', 'timeMatches', 'breakMatches', 'isWorkingDay', 'isTimeToWork', 'isTimeToTakeARest'));
 
-$from = Carbon::parse('2019-10-28 13:45', $calendar->timezone());
-$to = Carbon::parse('2019-10-28 18:00', $calendar->timezone());
+$from = Carbon::parse('2019-10-28 11:45', $calendar->timezone());
+$to = Carbon::parse('2019-10-30 12:30', $calendar->timezone());
 
 // $elapse = $calendar->elapseSeconds($from, Carbon::now());
 // $secondsForHumans = $calendar->secondsForHumans($elapse);
@@ -43,6 +43,7 @@ $to = Carbon::parse('2019-10-28 18:00', $calendar->timezone());
 // dd($calendar->createCarbonFromTimestamp($from), $calendar->createCarbonFromTimestamp($to));
 
 $elapse = $calendar->elapseSecondsInWokingTime($from, $to);
+var_dump($elapse);
 $secondsForHumans = $calendar->secondsForHumans($elapse);
 
 dd($secondsForHumans);

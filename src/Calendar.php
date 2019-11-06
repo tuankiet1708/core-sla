@@ -436,6 +436,14 @@ class Calendar {
         return $this->calculateElapseSecondsInWokingTimeForCustomCalendar($from, $to, $dates); 
     }
 
+    /**
+     * getElapsedSecondsOnTimeBand
+     * 
+     * @param Carbon $from
+     * @param Carbon $to
+     * @param array $config
+     * @return array
+     */
     protected function getElapsedSecondsOnTimeBand(Carbon $from, Carbon $to, array $config) : array
     {
         $secondsExcludes = $secondsIncludes = [];
@@ -471,7 +479,14 @@ class Calendar {
 
             if (! $this->isWorkingDay($date, $matches)) continue;
 
-            list ($includes, $excludes) = $this->getElapsedSeconds($from, $to, $date, $matches[0]);
+            list ($includes, $excludes, $configMatches) = $this->getElapsedSeconds($from, $to, $date, $matches[0]);
+
+            var_dump(
+                ">>>>>>>>>",
+                $configMatches, 
+                $this->secondsForHumans(array_sum($includes) - array_sum($excludes)),
+                "=========\n"
+            );
 
             $secondsExcludes = array_merge($secondsExcludes, $excludes);
             $secondsIncludes = array_merge($secondsIncludes, $includes);
@@ -480,31 +495,32 @@ class Calendar {
         return array_sum($secondsIncludes) - array_sum($secondsExcludes);
     }
 
-    protected function getElapsedSeconds(Carbon $from, Carbon $to, Carbon $date, array $config) 
+    /**
+     * getElapsedSeconds
+     * 
+     * @param Carbon $from
+     * @param Carbon $to
+     * @param Carbon $date
+     * @param array $config
+     * @return array
+     */
+    protected function getElapsedSeconds(Carbon $from, Carbon $to, Carbon $date, array $config) : array
     {
-        // $range = [
-        //     'from_hour' => 0,
-        //     'from_minute' => 0,
-        //     'to_hour' => 23,
-        //     'to_minute' => 59
-        // ];
-        $fromIsInRange = $this->isInRange($from, $this->generateCarbonRangeOfTime($date, $config));
-        $toIsInRange = $this->isInRange($to, $this->generateCarbonRangeOfTime($date, $config));
+        // flag to indicates whether ($from + $to) are on the same ($date)
+        $fromIsOnTheDate = $from->toDateString() === $date->toDateString();
+        $toIsOnTheDate = $to->toDateString() === $date->toDateString();
 
-        $fromIsInRange = $from->diffInDays($date->copy()->addSecond()) === 0;
-        $toIsInRange = $to->diffInDays($date->copy()->addSecond()) === 0;
-
-        var_dump(">>>>>>>>", $fromIsInRange, $toIsInRange);
-
+        // pool of break times
         $breakTimes = [];
+        $mergedConfig = $config;
 
-        // Both of ($from + $to) are not in the range
-        if (! $fromIsInRange && ! $toIsInRange) {
+        // both of ($from + $to) are not on the same date
+        if (! $fromIsOnTheDate && ! $toIsOnTheDate) {
             $result = $this->getElapsedSecondsOnTimeBand($from, $to, $config);
         }
 
-        // $from is in the range, but $to
-        elseif ( $fromIsInRange && ! $toIsInRange ) {
+        // $from is on the same date, but $to
+        elseif ( $fromIsOnTheDate && ! $toIsOnTheDate ) {
             foreach ((array) array_get($config, 'break') as $index => $break) {
                 $breakTimeFrom = $date->copy();
                 $breakTimeFrom->addHours($break['from_hour'])->addMinutes($break['from_minute']);
@@ -512,6 +528,8 @@ class Calendar {
                 $breakTimeTo = $date->copy();
                 $breakTimeTo->addHours($break['to_hour'])->addMinutes($break['to_minute']);
 
+                // $from is in the range of $break
+                // also upper than the point of $breakTimeTo
                 if (
                     $this->isInRange($from, $this->generateCarbonRangeOfTime($date, $break))
                     && $from->diffInSeconds($breakTimeTo, false) > 0
@@ -521,20 +539,21 @@ class Calendar {
                         'from_minute' => $from->minute,
                     ]);
                 }
+                // $from is not in the range of $break
                 elseif ($from->diffInSeconds($breakTimeFrom, false) >= 0) {
                     $breakTimes[] = $break;
                 }                
             }
 
-            $result = $this->getElapsedSecondsOnTimeBand($from, $to, array_merge($config, [
+            $result = $this->getElapsedSecondsOnTimeBand($from, $to, $mergedConfig = array_merge($config, [
                 'from_hour' => $from->hour,
                 'from_minute' => $from->minute,
                 'break' => $breakTimes
             ]));
         }
 
-        // $to is in the range, but $from
-        elseif ( ! $fromIsInRange && $toIsInRange ) {
+        // $to is on the same date, but $from
+        elseif ( ! $fromIsOnTheDate && $toIsOnTheDate ) {
             foreach ((array) array_get($config, 'break') as $index => $break) {
                 $breakTimeFrom = $date->copy();
                 $breakTimeFrom->addHours($break['from_hour'])->addMinutes($break['from_minute']);
@@ -542,6 +561,8 @@ class Calendar {
                 $breakTimeTo = $date->copy();
                 $breakTimeTo->addHours($break['to_hour'])->addMinutes($break['to_minute']);
 
+                // $to is in the range of $break
+                // also lower than the point of $breakTimeFrom
                 if (
                     $this->isInRange($to, $this->generateCarbonRangeOfTime($date, $break))
                     && $to->diffInSeconds($breakTimeFrom, false) < 0
@@ -551,12 +572,13 @@ class Calendar {
                         'to_minute' => $to->minute,
                     ]);
                 }
+                // $to is not in the range of $break
                 elseif ($to->diffInSeconds($breakTimeTo, false) <= 0) {
                     $breakTimes[] = $break;
                 }                
             }
 
-            $result = $this->getElapsedSecondsOnTimeBand($from, $to, array_merge($config, [
+            $result = $this->getElapsedSecondsOnTimeBand($from, $to, $mergedConfig = array_merge($config, [
                 'to_hour' => $to->hour,
                 'to_minute' => $to->minute,
                 'break' => $breakTimes
@@ -564,7 +586,7 @@ class Calendar {
 
         }
 
-        // Both of ($from + $to) are in the range
+        // Both of ($from + $to) are on the same date
         else {
             foreach ((array) array_get($config, 'break') as $index => $break) {
                 $breakTimeFrom = $date->copy();
@@ -573,6 +595,7 @@ class Calendar {
                 $breakTimeTo = $date->copy();
                 $breakTimeTo->addHours($break['to_hour'])->addMinutes($break['to_minute']);
 
+                // both of ($from + $to) are in the range of $break
                 if (
                     $this->isInRange($from, $this->generateCarbonRangeOfTime($date, $break))
                     && $this->isInRange($to, $this->generateCarbonRangeOfTime($date, $break))
@@ -585,6 +608,8 @@ class Calendar {
                     ]);
                 }
 
+                // $from is in the range of $break
+                // also upper than the point of $breakTimeTo
                 elseif (
                     $this->isInRange($from, $this->generateCarbonRangeOfTime($date, $break))
                     && $from->diffInSeconds($breakTimeTo, false) > 0
@@ -594,6 +619,8 @@ class Calendar {
                         'from_minute' => $from->minute,
                     ]);
                 }
+                // $to is in the range of $break
+                // also lower than the point of $breakTimeFrom
                 elseif (
                     $this->isInRange($to, $this->generateCarbonRangeOfTime($date, $break))
                     && $to->diffInSeconds($breakTimeFrom, false) < 0
@@ -603,26 +630,24 @@ class Calendar {
                         'to_minute' => $to->minute,
                     ]);
                 }
+                // $from is upper than the point of $breakTimeFrom
                 elseif (
                     $from->diffInSeconds($breakTimeFrom, false) >= 0
-                    // || $to->diffInSeconds($breakTimeTo, false) <= 0
                 ) {
                     $breakTimes[] = $break;
                 }                
             }
 
-            $result = $this->getElapsedSecondsOnTimeBand($from, $to, array_merge($config, [
+            $result = $this->getElapsedSecondsOnTimeBand($from, $to, $mergedConfig = array_merge($config, [
                 'from_hour' => $from->hour,
                 'from_minute' => $from->minute,
+                'to_hour' => $to->hour,
+                'to_minute' => $to->minute,
                 'break' => $breakTimes
             ]));
         }
 
-        
-        var_dump($breakTimes, $date);
-        var_dump("========");
-
-        return $result;
+        return array_merge($result, [$mergedConfig]);
     }
 
     /**
@@ -647,7 +672,8 @@ class Calendar {
             if ($index === 0) {
                 $secondsExcludes[] = $date->diffInSeconds($from);
             } 
-            elseif ($index === count($dates) - 1) {
+            
+            if ($index === count($dates) - 1) {
                 $secondsExcludes[] = $date->copy()->addDay()->diffInSeconds($to);
             }
         }
