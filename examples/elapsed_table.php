@@ -14,7 +14,7 @@
         <th>Total</th>
     </thead>
     <tbody>
-        <?php foreach ($timeMatches as $time) { ?>
+        <?php foreach ($timeMatches as $index => $time) { ?>
             <?php 
                 switch ($time['day']) {
                     case 1: $d = 'Monday'; break;
@@ -56,7 +56,13 @@
                 <td align="right">
                     <?php 
                         $partialFrom = $time['date']->copy()->addHours($time['from_hour'])->addMinutes($time['from_minute']);
-                        $partialTo = $time['date']->copy()->addHours($time['to_hour'])->addMinutes($time['to_minute']);
+
+                        if (isset($timeMatches[$index + 1]) && $time['to_hour'] === 0 && $time['to_minute'] === 0) {
+                            $partialTo = $time['date']->copy()->addDay();
+                        } else {
+                            $partialTo = $time['date']->copy()->addHours($time['to_hour'])->addMinutes($time['to_minute']);
+                        }
+                        
                         $total = $calendar->elapseSecondsInWokingTime($partialFrom, $partialTo);
 
                         echo "<b>" . $calendar->secondsForHumans($total) . "</b>";

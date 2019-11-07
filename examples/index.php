@@ -47,9 +47,10 @@ load_view_path(__DIR__ . '/workdays_table.php', compact('calendar', 'time', 'wor
 // ▒█░▒█ ▒█▄▄▀ ░░▀▄▀░ ▒█░▒█ ▒█░░▀█ ▒█▄▄█ ▒█▄▄▄ ▒█▄▄▀ 
 
 // Elapsed caculation
-$from = Carbon::parse('2019-10-20 11:45', $calendar->timezone());
+$from = Carbon::parse('2019-10-21 09:45', $calendar->timezone());
 // $to = Carbon::createFromTimestamp(time(), $calendar->timezone());
 $to = Carbon::parse('2019-10-31 10:00', $calendar->timezone());
+
 $timeMatches = [];
 $elapse = $calendar->elapseSecondsInWokingTime($from, $to, $timeMatches);
 
