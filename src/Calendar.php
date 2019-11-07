@@ -404,9 +404,10 @@ class Calendar {
      * 
      * @param Carbon|int $from
      * @param Carbon|int $to
+     * @param mixed &$timeMatches
      * @return int
      */
-    public function elapseSecondsInWokingTime($from, $to) : int 
+    public function elapseSecondsInWokingTime($from, $to, &$timeMatches = null) : int 
     {
         if (! $from instanceof Carbon) {
             $from = $this->createCarbonFromTimestamp($from);
@@ -422,18 +423,18 @@ class Calendar {
             $date = isset($date) ? $date->addDay() : $from->copy();
             $date->hour = 0; $date->minute = 0; $date->second = 0;
 
-            if ($date->diffInSeconds($to, false) < 0) break;
+            if ($date->diffInSeconds($to, false) <= 0) break;
 
             $dates[] = $date->copy();
         }
 
         // for 247 calendar
         if ($this->is247Calendar()) {
-            return $this->calculateElapseSecondsInWokingTimeFor247Calendar($from, $to, $dates);
+            return $this->calculateElapseSecondsInWokingTimeFor247Calendar($from, $to, $dates, $timeMatches);
         }
 
         // for custom calendar
-        return $this->calculateElapseSecondsInWokingTimeForCustomCalendar($from, $to, $dates); 
+        return $this->calculateElapseSecondsInWokingTimeForCustomCalendar($from, $to, $dates, $timeMatches); 
     }
 
     /**
@@ -463,9 +464,10 @@ class Calendar {
      * @param Carbon $from
      * @param Carbon $to
      * @param array $dates
+     * @param mixed &$timeMatches
      * @return int
      */
-    protected function calculateElapseSecondsInWokingTimeForCustomCalendar(Carbon $from, Carbon $to, array $dates) : int
+    protected function calculateElapseSecondsInWokingTimeForCustomCalendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null) : int
     {
         // for making an exclusion of no working seconds
         $secondsExcludes = [];
@@ -481,12 +483,7 @@ class Calendar {
 
             list ($includes, $excludes, $configMatches) = $this->getElapsedSeconds($from, $to, $date, $matches[0]);
 
-            var_dump(
-                ">>>>>>>>>",
-                $configMatches, 
-                $this->secondsForHumans(array_sum($includes) - array_sum($excludes)),
-                "=========\n"
-            );
+            $timeMatches[] = $configMatches + ['date' => $date];
 
             $secondsExcludes = array_merge($secondsExcludes, $excludes);
             $secondsIncludes = array_merge($secondsIncludes, $includes);
@@ -656,9 +653,10 @@ class Calendar {
      * @param Carbon $from
      * @param Carbon $to
      * @param array $dates
+     * @param mixed &$timeMatches
      * @return int
      */
-    protected function calculateElapseSecondsInWokingTimeFor247Calendar(Carbon $from, Carbon $to, array $dates) : int
+    protected function calculateElapseSecondsInWokingTimeFor247Calendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null) : int
     {
         // for making an exclusion of no working seconds
         $secondsExcludes = [];
@@ -671,10 +669,45 @@ class Calendar {
 
             if ($index === 0) {
                 $secondsExcludes[] = $date->diffInSeconds($from);
+              
+                $timeMatches[] = [
+                    'date' => $date,
+                    'day' => $date->dayOfWeek,
+                    'from_hour' => $from->hour,
+                    'from_minute' => $from->minute,
+                    'to_hour' => $date->copy()->addDay()->hour,
+                    'to_minute' => $date->copy()->addDay()->minute,
+                ];
             } 
             
             if ($index === count($dates) - 1) {
                 $secondsExcludes[] = $date->copy()->addDay()->diffInSeconds($to);
+
+                if ($index === 0) {
+                    $timeMatches[$index]['to_hour'] = $to->hour;
+                    $timeMatches[$index]['to_minute'] = $to->minute;
+                } 
+                else {
+                    $timeMatches[] = [
+                        'date' => $date,
+                        'day' => $date->dayOfWeek,
+                        'from_hour' => $date->hour,
+                        'from_minute' => $date->minute,
+                        'to_hour' => $to->hour,
+                        'to_minute' => $to->minute,
+                    ];
+                }
+            }
+
+            if (($index !== 0) && ($index !== count($dates) - 1)) {
+                $timeMatches[] = [
+                    'date' => $date,
+                    'day' => $date->dayOfWeek,
+                    'from_hour' => $date->hour,
+                    'from_minute' => $date->minute,
+                    'to_hour' => $date->copy()->addDay()->hour,
+                    'to_minute' => $date->copy()->addDay()->minute,
+                ];
             }
         }
         

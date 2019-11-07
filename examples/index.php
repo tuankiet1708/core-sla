@@ -4,11 +4,18 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use Leo\SLA\Calendar;
 use Carbon\Carbon;
 
+// Load a calendar config
 $config = config_get('calendar.8_5_calendar');
+
+// initialize a instance of Calendar
 $calendar = new Calendar($config); 
 
 $time = Carbon::createFromTimestamp(time(), $calendar->timezone());
 // $time = Carbon::parse('2019-01-01 00:00', $calendar->timezone());
+
+// ▒█▀▀█ ░█▀▀█ ▒█▀▀▀█ ▀█▀ ▒█▀▀█ 
+// ▒█▀▀▄ ▒█▄▄█ ░▀▀▀▄▄ ▒█░ ▒█░░░ 
+// ▒█▄▄█ ▒█░▒█ ▒█▄▄▄█ ▄█▄ ▒█▄▄█ 
 
 echo "<pre style='font-size:18'>";
 echo "<b>Kind of calendar</b>: " . ($calendar->is247Calendar() ? "247" : "custom");
@@ -34,16 +41,19 @@ load_view_path(__DIR__ . '/holidays_table.php', compact('calendar', 'time', 'hol
 // Table of workdays
 load_view_path(__DIR__ . '/workdays_table.php', compact('calendar', 'time', 'workdayMatches', 'timeMatches', 'breakMatches', 'isWorkingDay', 'isTimeToWork', 'isTimeToTakeARest'));
 
-$from = Carbon::parse('2019-10-28 11:45', $calendar->timezone());
-$to = Carbon::parse('2019-10-30 12:30', $calendar->timezone());
 
-// $elapse = $calendar->elapseSeconds($from, Carbon::now());
-// $secondsForHumans = $calendar->secondsForHumans($elapse);
+// ░█▀▀█ ▒█▀▀▄ ▒█░░▒█ ░█▀▀█ ▒█▄░▒█ ▒█▀▀█ ▒█▀▀▀ ▒█▀▀▄ 
+// ▒█▄▄█ ▒█░▒█ ░▒█▒█░ ▒█▄▄█ ▒█▒█▒█ ▒█░░░ ▒█▀▀▀ ▒█░▒█ 
+// ▒█░▒█ ▒█▄▄▀ ░░▀▄▀░ ▒█░▒█ ▒█░░▀█ ▒█▄▄█ ▒█▄▄▄ ▒█▄▄▀ 
 
-// dd($calendar->createCarbonFromTimestamp($from), $calendar->createCarbonFromTimestamp($to));
+// Elapsed caculation
+$from = Carbon::parse('2019-10-20 11:45', $calendar->timezone());
+// $to = Carbon::createFromTimestamp(time(), $calendar->timezone());
+$to = Carbon::parse('2019-10-31 10:00', $calendar->timezone());
+$timeMatches = [];
+$elapse = $calendar->elapseSecondsInWokingTime($from, $to, $timeMatches);
 
-$elapse = $calendar->elapseSecondsInWokingTime($from, $to);
-var_dump($elapse);
-$secondsForHumans = $calendar->secondsForHumans($elapse);
+// dd($timeMatches);
 
-dd($secondsForHumans);
+// Table of elapsed 
+load_view_path(__DIR__ . '/elapsed_table.php', compact('calendar', 'from', 'to', 'timeMatches', 'elapse'));
