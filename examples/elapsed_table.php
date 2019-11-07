@@ -1,6 +1,6 @@
 <table border="1" cellpadding="10" style="min-width: 350px; width: 50vw; margin: 10px 0px;">
     <caption>
-        <b>Elapsed</b>
+        <b>Elapsed Working Time</b>
         <br/>
         <span>
             <b>From</b> <?php echo $from->toDateTimeString() ?> |
