@@ -58,3 +58,6 @@ $elapse = $calendar->elapseSecondsInWokingTime($from, $to, $timeMatches);
 
 // Table of elapsed 
 load_view_path(__DIR__ . '/elapsed_table.php', compact('calendar', 'from', 'to', 'timeMatches', 'elapse'));
+
+// $target = 234900;
+// $forecast = $calendar->forecastTimestampMatchesTargetTotal($from, $target);
