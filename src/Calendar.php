@@ -199,7 +199,7 @@ class Calendar {
         }))[0];
 
         // generate Carbon ranges of working hours
-        $range = $this->generateCarbonRangeOfTime($time, $dayToCheck);
+        $range = $this->createCarbonRangeOfTime($time, $dayToCheck);
 
         // the given time is not in range of working time.
         if (! $this->isInRange($time, $range)) {
@@ -209,7 +209,7 @@ class Calendar {
         // generate Carbon ranges of break time hours
         $break = (array) array_get($dayToCheck, 'break');
         foreach ($break as $breakRange) {
-            $range = $this->generateCarbonRangeOfTime($time, $breakRange);
+            $range = $this->createCarbonRangeOfTime($time, $breakRange);
 
             // the given time is in range of break time.
             if ($this->isInRange($time, $range)) {
@@ -248,7 +248,7 @@ class Calendar {
     }
 
     /**
-     * Generate Carbon range of time
+     * Create Carbon range of time
      * 
      * @param Carbon $date
      * @param array $timeRange 
@@ -256,7 +256,7 @@ class Calendar {
      * 
      * @return array [from, to]
      */
-    protected function generateCarbonRangeOfTime(Carbon $date, array $timeRange) : array
+    protected function createCarbonRangeOfTime(Carbon $date, array $timeRange) : array
     {
         // only need date, no nead time
         $time = $date->copy();
@@ -459,7 +459,7 @@ class Calendar {
         ))[0] ?? null;
 
         // day of $from is matched with day configuration
-        if ($from->dayOfWeek === $dayConfig['day']) {
+        if ($dayConfig && $from->dayOfWeek === $dayConfig['day']) {
             $time = $from->copy();
             $time->hour = 0; $time->minute = 0; $time->second = 0;
 
@@ -476,7 +476,7 @@ class Calendar {
         }
 
         // day of $to is matched with day configuration
-        if ($to->dayOfWeek === $dayConfig['day']) {
+        if ($dayConfig && $to->dayOfWeek === $dayConfig['day']) {
             $time = $to->copy();
             $time->hour = 0; $time->minute = 0; $time->second = 0;
 
@@ -563,16 +563,12 @@ class Calendar {
         // $from is on the same date, but $to
         elseif ( $fromIsOnTheDate && ! $toIsOnTheDate ) {
             foreach ((array) array_get($config, 'break') as $index => $break) {
-                $breakTimeFrom = $date->copy();
-                $breakTimeFrom->addHours($break['from_hour'])->addMinutes($break['from_minute']);
-                
-                $breakTimeTo = $date->copy();
-                $breakTimeTo->addHours($break['to_hour'])->addMinutes($break['to_minute']);
+                list($breakTimeFrom, $breakTimeTo) = $this->createCarbonRangeOfTime($date, $break);
 
                 // $from is in the range of $break
                 // also upper than the point of $breakTimeTo
                 if (
-                    $this->isInRange($from, $this->generateCarbonRangeOfTime($date, $break))
+                    $this->isInRange($from, [$breakTimeFrom, $breakTimeTo])
                     && $from->diffInSeconds($breakTimeTo, false) > 0
                 ) {
                     $breakTimes[] = array_merge($break, [
@@ -597,16 +593,12 @@ class Calendar {
         // $to is on the same date, but $from
         elseif ( ! $fromIsOnTheDate && $toIsOnTheDate ) {
             foreach ((array) array_get($config, 'break') as $index => $break) {
-                $breakTimeFrom = $date->copy();
-                $breakTimeFrom->addHours($break['from_hour'])->addMinutes($break['from_minute']);
-                
-                $breakTimeTo = $date->copy();
-                $breakTimeTo->addHours($break['to_hour'])->addMinutes($break['to_minute']);
+                list($breakTimeFrom, $breakTimeTo) = $this->createCarbonRangeOfTime($date, $break);
 
                 // $to is in the range of $break
                 // also lower than the point of $breakTimeFrom
                 if (
-                    $this->isInRange($to, $this->generateCarbonRangeOfTime($date, $break))
+                    $this->isInRange($to, [$breakTimeFrom, $breakTimeTo])
                     && $to->diffInSeconds($breakTimeFrom, false) < 0
                 ) {
                     $breakTimes[] = array_merge($break, [
@@ -632,14 +624,10 @@ class Calendar {
         // Both of ($from + $to) are on the same date
         else {
             foreach ((array) array_get($config, 'break') as $index => $break) {
-                $breakTimeFrom = $date->copy();
-                $breakTimeFrom->addHours($break['from_hour'])->addMinutes($break['from_minute']);
-                
-                $breakTimeTo = $date->copy();
-                $breakTimeTo->addHours($break['to_hour'])->addMinutes($break['to_minute']);
+                list($breakTimeFrom, $breakTimeTo) = $this->createCarbonRangeOfTime($date, $break);
 
                 // range of Carbon instances
-                $range = $this->generateCarbonRangeOfTime($date, $break);
+                $range = [$breakTimeFrom, $breakTimeTo];
 
                 // both of ($from + $to) are in the range of $break
                 if (
@@ -800,4 +788,6 @@ class Calendar {
 
         return $from->diffInSeconds($to, $absolute);
     }
+
+
 }
