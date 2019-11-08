@@ -804,50 +804,61 @@ class Calendar {
     }
 
     /**
-     * Forecast what timestamp matches the target total in seconds
+     * Estimate what timestamp matches the target total in seconds
      * 
      * @param Carbon|int $from
      * @param int $target in seconds
-     * @return int
+     * @return Carbon|null
      */
-    public function forecastTimestampMatchesTargetTotal($from, int $target) : int 
+    public function estimateTimestampMatchesTargetTotal($from, int $target) 
     {
         if (! $from instanceof Carbon) {
             $from = $this->createCarbonFromTimestamp($from);
         }
 
-        $try = $from->copy()->addSeconds($target);
+        $backtrace = $from;
+        $try = $from->copy()->addDay();
         $test = $this->elapseSecondsInWokingTime($from, $try);
 
         while ($test < $target) {
+            $backtrace = $try;
             $try = $try->copy()->addSeconds($target);
             $test = $this->elapseSecondsInWokingTime($from, $try);
         }
 
-        var_dump($target, $test, $from, $try, "\n=====\n");
-
-        $deviation = $test - $target;
-
-        if ($deviation > 0) {
-            var_dump($target, $test, $from, $try, "\n=====\n");
-            $binary = (int)floor($deviation / 2);
-
-            $try = $try->copy()->subSeconds($binary);
-            
-            $test = $this->elapseSecondsInWokingTime($from, $try);
-
-            var_dump($target, $test, $from, $try, $binary, "\n=====\n");
-
-            
-            // dd($target, $test, $from, $try, $binary, $deviation);
-        }
-
-        // dd($deviation);
-
-        dd(123);
-
-        return 0;
+        return $this->binaryEstimate($from, $backtrace, $backtrace->copy()->addSeconds($target), $target);
     }
 
-    // protected function 
+    /**
+     * Estimate with Binary Search
+     * 
+     * @param Carbon $from
+     * @param Carbon $start
+     * @param Carbon $finish
+     * @param int $target
+     * @return Carbon|null
+     */
+    protected function binaryEstimate(Carbon $from, Carbon $start, Carbon $finish, int $target) 
+    {
+        if ($start->diffInSeconds($finish, false) >= 0) {
+            $midSec = (int) floor($start->diffInSeconds($finish, false) / 2);
+            $mid = $start->copy()->addSeconds($midSec);
+
+            $test = $this->elapseSecondsInWokingTime($from, $mid);
+
+            if ($test === $target || $midSec == 0) {
+                return $mid;
+            }
+
+            if ($test < $target) {
+                return $this->binaryEstimate($from, $mid, $finish, $target);
+            }
+            
+            if ($test > $target) {
+                return $this->binaryEstimate($from, $start, $mid, $target);
+            }
+        }
+
+        return null;
+    }
 }
