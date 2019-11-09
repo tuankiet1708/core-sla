@@ -816,17 +816,36 @@ class Calendar {
             $from = $this->createCarbonFromTimestamp($from);
         }
 
-        $backtrace = $from;
-        $try = $from->copy()->addDay();
-        $test = $this->elapseSecondsInWokingTime($from, $try);
-
-        while ($test < $target) {
-            $backtrace = $try;
-            $try = $try->copy()->addSeconds($target);
+        while (true) {
+            $backtrace = isset($try) ? $try : $from;
+            // try to add seconds
+            $try = $backtrace->copy()->addSeconds($target);
+            // run a test
             $test = $this->elapseSecondsInWokingTime($from, $try);
+
+            if ($test >= $target) {
+                $result = $try;
+                break;
+            }
         }
 
-        return $this->binaryEstimate($from, $backtrace, $backtrace->copy()->addSeconds($target), $target);
+        // $estimate & $from are different
+        while ($result->diffInSeconds($from) != 0) {
+            // expect the accurate $estimate
+            $estimate = $this->binaryEstimate(
+                $from, 
+                isset($estimate) ? $estimate->copy()->subDay() : $backtrace, 
+                isset($estimate) ? $estimate : $backtrace->copy()->addSeconds($target), 
+                $target,
+                $test
+            );
+            
+            if ($test < $target) break;
+
+            $result = $estimate;
+        }
+
+        return $result;
     }
 
     /**
@@ -836,9 +855,10 @@ class Calendar {
      * @param Carbon $start
      * @param Carbon $finish
      * @param int $target
+     * @param int &$target
      * @return Carbon|null
      */
-    protected function binaryEstimate(Carbon $from, Carbon $start, Carbon $finish, int $target) 
+    protected function binaryEstimate(Carbon $from, Carbon $start, Carbon $finish, int $target, &$test) 
     {
         if ($start->diffInSeconds($finish, false) >= 0) {
             $midSec = (int) floor($start->diffInSeconds($finish, false) / 2);
@@ -851,11 +871,11 @@ class Calendar {
             }
 
             if ($test < $target) {
-                return $this->binaryEstimate($from, $mid, $finish, $target);
+                return $this->binaryEstimate($from, $mid, $finish, $target, $test);
             }
             
             if ($test > $target) {
-                return $this->binaryEstimate($from, $start, $mid, $target);
+                return $this->binaryEstimate($from, $start, $mid, $target, $test);
             }
         }
 

@@ -49,7 +49,7 @@ load_view_path(__DIR__ . '/workdays_table.php', compact('calendar', 'time', 'wor
 // Elapsed caculation
 $from = Carbon::parse('2019-10-21 09:45', $calendar->timezone());
 // $to = Carbon::createFromTimestamp(time(), $calendar->timezone());
-$to = Carbon::parse('2019-11-31 13:30', $calendar->timezone());
+$to = Carbon::parse('2019-11-11 13:45', $calendar->timezone());
 // $to = Carbon::createFromTimestamp(1572514410, $calendar->timezone());
 
 $timeMatches = [];
