@@ -53,7 +53,7 @@ $to = Carbon::parse('2019-11-11 13:45', $calendar->timezone());
 // $to = Carbon::createFromTimestamp(1572514410, $calendar->timezone());
 
 $timeMatches = [];
-$elapse = $calendar->elapseSecondsInWokingTime($from, $to, $timeMatches);
+$elapse = $calendar->elapseSecondsInWorkingTime($from, $to, $timeMatches);
 
 // dd($timeMatches);
 

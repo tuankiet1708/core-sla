@@ -63,7 +63,7 @@
                             $partialTo = $time['date']->copy()->addHours($time['to_hour'])->addMinutes($time['to_minute']);
                         }
                         
-                        $total = $calendar->elapseSecondsInWokingTime($partialFrom, $partialTo);
+                        $total = $calendar->elapseSecondsInWorkingTime($partialFrom, $partialTo);
 
                         echo "<b>" . $calendar->secondsForHumans($total) . "</b>";
                         echo "<br/>($total seconds)";

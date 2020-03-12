@@ -408,7 +408,7 @@ class Calendar {
      * @param mixed &$timeMatches
      * @return int
      */
-    public function elapseSecondsInWokingTime($from, $to, &$timeMatches = null) : int 
+    public function elapseSecondsInWorkingTime($from, $to, &$timeMatches = null) : int 
     {
         if (! $from instanceof Carbon) {
             $from = $this->createCarbonFromTimestamp($from);
@@ -431,11 +431,11 @@ class Calendar {
 
         // for 247 calendar
         if ($this->is247Calendar()) {
-            return $this->calculateElapseSecondsInWokingTimeFor247Calendar($from, $to, $dates, $timeMatches);
+            return $this->calculateElapseSecondsInWorkingTimeFor247Calendar($from, $to, $dates, $timeMatches);
         }
 
         // for custom calendar
-        return $this->calculateElapseSecondsInWokingTimeForCustomCalendar($from, $to, $dates, $timeMatches); 
+        return $this->calculateElapseSecondsInWorkingTimeForCustomCalendar($from, $to, $dates, $timeMatches); 
     }
 
     /**
@@ -514,7 +514,7 @@ class Calendar {
     }
 
     /**
-     * calculateElapseSecondsInWokingTimeForCustomCalendar
+     * calculateElapseSecondsInWorkingTimeForCustomCalendar
      * 
      * @param Carbon $from
      * @param Carbon $to
@@ -522,7 +522,7 @@ class Calendar {
      * @param mixed &$timeMatches
      * @return int
      */
-    protected function calculateElapseSecondsInWokingTimeForCustomCalendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null) : int
+    protected function calculateElapseSecondsInWorkingTimeForCustomCalendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null) : int
     {
         // for making an exclusion of no working seconds
         $secondsExcludes = [];
@@ -702,7 +702,7 @@ class Calendar {
     }
 
     /**
-     * calculateElapseSecondsInWokingTimeFor247Calendar
+     * calculateElapseSecondsInWorkingTimeFor247Calendar
      * 
      * @param Carbon $from
      * @param Carbon $to
@@ -710,7 +710,7 @@ class Calendar {
      * @param mixed &$timeMatches
      * @return int
      */
-    protected function calculateElapseSecondsInWokingTimeFor247Calendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null) : int
+    protected function calculateElapseSecondsInWorkingTimeFor247Calendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null) : int
     {
         // for making an exclusion of no working seconds
         $secondsExcludes = [];
@@ -821,7 +821,7 @@ class Calendar {
             // try to add seconds
             $try = $backtrace->copy()->addSeconds($target);
             // run a test
-            $test = $this->elapseSecondsInWokingTime($from, $try);
+            $test = $this->elapseSecondsInWorkingTime($from, $try);
 
             if ($test >= $target) {
                 $result = $try;
@@ -864,7 +864,7 @@ class Calendar {
             $midSec = (int) floor($start->diffInSeconds($finish, false) / 2);
             $mid = $start->copy()->addSeconds($midSec);
 
-            $test = $this->elapseSecondsInWokingTime($from, $mid);
+            $test = $this->elapseSecondsInWorkingTime($from, $mid);
 
             if ($test === $target || $midSec == 0) {
                 return $mid;
