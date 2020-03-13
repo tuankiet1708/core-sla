@@ -421,10 +421,10 @@ class Calendar {
      * @param Carbon|int $from
      * @param Carbon|int $to
      * @param mixed &$timeMatches
-     * @param array $pausingPoints
+     * @param array $nonCountingTimeRanges
      * @return int
      */
-    public function elapseSecondsInWorkingTime($from, $to, &$timeMatches = null, array $pausingPoints = []) : int 
+    public function elapseSecondsInWorkingTime($from, $to, &$timeMatches = null, array $nonCountingTimeRanges = []) : int 
     {
         if (! $from instanceof Carbon) {
             $from = $this->createCarbonFromTimestamp($from);
@@ -447,11 +447,11 @@ class Calendar {
 
         // for 247 calendar
         if ($this->is247Calendar()) {
-            return $this->calculateElapseSecondsInWorkingTimeFor247Calendar($from, $to, $dates, $timeMatches, $pausingPoints);
+            return $this->calculateElapseSecondsInWorkingTimeFor247Calendar($from, $to, $dates, $timeMatches, $nonCountingTimeRanges);
         }
 
         // for custom calendar
-        return $this->calculateElapseSecondsInWorkingTimeForCustomCalendar($from, $to, $dates, $timeMatches, $pausingPoints); 
+        return $this->calculateElapseSecondsInWorkingTimeForCustomCalendar($from, $to, $dates, $timeMatches, $nonCountingTimeRanges); 
     }
 
     /**
@@ -536,10 +536,10 @@ class Calendar {
      * @param Carbon $to
      * @param array $dates
      * @param mixed &$timeMatches
-     * @param array $pausingPoints
+     * @param array $nonCountingTimeRanges
      * @return int
      */
-    protected function calculateElapseSecondsInWorkingTimeForCustomCalendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null, array $pausingPoints = []) : int
+    protected function calculateElapseSecondsInWorkingTimeForCustomCalendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null, array $nonCountingTimeRanges = []) : int
     {
         // for making an exclusion of no working seconds
         $secondsExcludes = [];
@@ -725,10 +725,10 @@ class Calendar {
      * @param Carbon $to
      * @param array $dates
      * @param mixed &$timeMatches
-     * @param array $pausingPoints
+     * @param array $nonCountingTimeRanges
      * @return int
      */
-    protected function calculateElapseSecondsInWorkingTimeFor247Calendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null, array $pausingPoints = []) : int
+    protected function calculateElapseSecondsInWorkingTimeFor247Calendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null, array $nonCountingTimeRanges = []) : int
     {
         // for making an exclusion of no working seconds
         $secondsExcludes = [];
