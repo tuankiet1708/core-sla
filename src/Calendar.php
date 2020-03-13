@@ -447,11 +447,14 @@ class Calendar {
 
         // for 247 calendar
         if ($this->is247Calendar()) {
-            return $this->calculateElapseSecondsInWorkingTimeFor247Calendar($from, $to, $dates, $timeMatches, $nonCountingTimeRanges);
+            $result = $this->calculateElapseSecondsInWorkingTimeFor247Calendar($from, $to, $dates, $timeMatches);
+        }
+        // for custom calendar
+        else {
+            $result = $this->calculateElapseSecondsInWorkingTimeForCustomCalendar($from, $to, $dates, $timeMatches); 
         }
 
-        // for custom calendar
-        return $this->calculateElapseSecondsInWorkingTimeForCustomCalendar($from, $to, $dates, $timeMatches, $nonCountingTimeRanges); 
+        return $result;
     }
 
     /**
@@ -536,10 +539,9 @@ class Calendar {
      * @param Carbon $to
      * @param array $dates
      * @param mixed &$timeMatches
-     * @param array $nonCountingTimeRanges
      * @return int
      */
-    protected function calculateElapseSecondsInWorkingTimeForCustomCalendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null, array $nonCountingTimeRanges = []) : int
+    protected function calculateElapseSecondsInWorkingTimeForCustomCalendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null) : int
     {
         // for making an exclusion of no working seconds
         $secondsExcludes = [];
@@ -725,10 +727,9 @@ class Calendar {
      * @param Carbon $to
      * @param array $dates
      * @param mixed &$timeMatches
-     * @param array $nonCountingTimeRanges
      * @return int
      */
-    protected function calculateElapseSecondsInWorkingTimeFor247Calendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null, array $nonCountingTimeRanges = []) : int
+    protected function calculateElapseSecondsInWorkingTimeFor247Calendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null) : int
     {
         // for making an exclusion of no working seconds
         $secondsExcludes = [];

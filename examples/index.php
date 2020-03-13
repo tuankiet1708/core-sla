@@ -5,13 +5,17 @@ use Leo\SLA\Calendar;
 use Carbon\Carbon;
 
 // Load a calendar config
-$config = config_get('calendar.8_5_calendar');
+$config = config_get('calendar.default');
+// $config = config_get('calendar.8_5_calendar');
 
 // initialize a instance of Calendar
 $calendar = new Calendar($config); 
 
-
-$time = 1584083300;
+// ======> TEST
+// Elapsed caculation
+$from = Carbon::parse('2019-10-21 09:45', $calendar->timezone());
+$to = Carbon::parse('2019-10-23 13:45', $calendar->timezone());
+$time = $from->timestamp;
 $pausingPoints = [
     [$time,         $time + 60],
     [$time + 720,   $time + 780],
@@ -27,8 +31,21 @@ $clean = array_map(function($item) {
         'to' => $item[1]->toDateTimeString()
     ];
 }, $clean);
-dd($formattedTimeRanges, "\n\n==\n\n", $clean);
 
+$elapsed = $calendar->elapseSecondsInWorkingTime($from, $to, $timeMatches);
+
+dd(
+    "\n\n ==== timeMatches ==== \n\n",
+    $timeMatches, 
+    "\n\n ==== elapsed ==== \n\n",
+    $elapsed, 
+    "\n\n ==== clean ==== \n\n",
+    $clean, 
+    "\n\n ==== formattedTimeRanges ==== \n\n",
+    $formattedTimeRanges
+);
+
+// <====== TEST
 
 $time = Carbon::createFromTimestamp(time(), $calendar->timezone());
 // $time = Carbon::parse('2019-01-01 00:00', $calendar->timezone());
