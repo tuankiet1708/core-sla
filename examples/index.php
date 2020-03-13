@@ -10,6 +10,26 @@ $config = config_get('calendar.8_5_calendar');
 // initialize a instance of Calendar
 $calendar = new Calendar($config); 
 
+
+$time = 1584083300;
+$pausingPoints = [
+    [$time,         $time + 60],
+    [$time + 720,   $time + 780],
+    [$time - 120,   $time + 360],
+    [$time - 240,   $time + 50],
+    [$time + 10,    $time + 30],
+    [$time - 300,   $time + 40],
+];
+$clean = $calendar->normalizeOverlappedTimeRanges($pausingPoints, $formattedTimeRanges);
+$clean = array_map(function($item) {
+    return [
+        'from' => $item[0]->toDateTimeString(),
+        'to' => $item[1]->toDateTimeString()
+    ];
+}, $clean);
+dd($formattedTimeRanges, "\n\n==\n\n", $clean);
+
+
 $time = Carbon::createFromTimestamp(time(), $calendar->timezone());
 // $time = Carbon::parse('2019-01-01 00:00', $calendar->timezone());
 

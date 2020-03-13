@@ -39,7 +39,7 @@ return [
                     "from_minute" => 0, 
                     "to_hour" => 17, 
                     "to_minute" => 0, 
-                    "break" => [
+                    "break" => [                        
                         [
                             "from_hour" => 12, 
                             "from_minute" => 0, 
@@ -61,6 +61,12 @@ return [
                     "to_hour" => 17, 
                     "to_minute" => 0, 
                     "break" => [
+                        [
+                            "from_hour" => 11, 
+                            "from_minute" => 0, 
+                            "to_hour" => 12, 
+                            "to_minute" => 30
+                        ],
                         [
                             "from_hour" => 12, 
                             "from_minute" => 0, 

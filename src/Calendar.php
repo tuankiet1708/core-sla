@@ -271,7 +271,22 @@ class Calendar {
         }
 
         return $result;
-    } 
+    }
+    
+    /**
+     * Create Carbon range of time by unix time
+     * 
+     * @param int $unixTimeFrom
+     * @param int|null $unixTimeTo
+     * @return array [from, to, isEqual]
+     */
+    public function createCarbonRangeOfTimeByUnixTime(int $unixTimeFrom, int $unixTimeTo = null) : array
+    {
+        $from = $this->createCarbonFromTimestamp($unixTimeFrom);
+        $to = $this->createCarbonFromTimestamp($unixTimeTo ?? $unixTimeFrom);
+
+        return [$from, $to, !$unixTimeTo];
+    }
 
     /**
      * Parse work days
@@ -406,9 +421,10 @@ class Calendar {
      * @param Carbon|int $from
      * @param Carbon|int $to
      * @param mixed &$timeMatches
+     * @param array $pausingPoints
      * @return int
      */
-    public function elapseSecondsInWorkingTime($from, $to, &$timeMatches = null) : int 
+    public function elapseSecondsInWorkingTime($from, $to, &$timeMatches = null, array $pausingPoints = []) : int 
     {
         if (! $from instanceof Carbon) {
             $from = $this->createCarbonFromTimestamp($from);
@@ -431,11 +447,11 @@ class Calendar {
 
         // for 247 calendar
         if ($this->is247Calendar()) {
-            return $this->calculateElapseSecondsInWorkingTimeFor247Calendar($from, $to, $dates, $timeMatches);
+            return $this->calculateElapseSecondsInWorkingTimeFor247Calendar($from, $to, $dates, $timeMatches, $pausingPoints);
         }
 
         // for custom calendar
-        return $this->calculateElapseSecondsInWorkingTimeForCustomCalendar($from, $to, $dates, $timeMatches); 
+        return $this->calculateElapseSecondsInWorkingTimeForCustomCalendar($from, $to, $dates, $timeMatches, $pausingPoints); 
     }
 
     /**
@@ -520,9 +536,10 @@ class Calendar {
      * @param Carbon $to
      * @param array $dates
      * @param mixed &$timeMatches
+     * @param array $pausingPoints
      * @return int
      */
-    protected function calculateElapseSecondsInWorkingTimeForCustomCalendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null) : int
+    protected function calculateElapseSecondsInWorkingTimeForCustomCalendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null, array $pausingPoints = []) : int
     {
         // for making an exclusion of no working seconds
         $secondsExcludes = [];
@@ -708,9 +725,10 @@ class Calendar {
      * @param Carbon $to
      * @param array $dates
      * @param mixed &$timeMatches
+     * @param array $pausingPoints
      * @return int
      */
-    protected function calculateElapseSecondsInWorkingTimeFor247Calendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null) : int
+    protected function calculateElapseSecondsInWorkingTimeFor247Calendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null, array $pausingPoints = []) : int
     {
         // for making an exclusion of no working seconds
         $secondsExcludes = [];
@@ -767,6 +785,70 @@ class Calendar {
         }
         
         return array_sum($secondsIncludes) - array_sum($secondsExcludes);
+    }
+
+    /**
+     * Normalize overlapped time ranges
+     * 
+     * @param array $timeRanges [ [1584074475, 1584074480], ... ]
+     * @param array &$formattedTimeRanges
+     * @return array
+     */
+    public function normalizeOverlappedTimeRanges(array $timeRanges = [], &$formattedTimeRanges = []) : array
+    {
+        $result = [];
+
+        // convert to Carbon instances
+        $timeRanges = array_map(function($item) {
+            return $this->createCarbonRangeOfTimeByUnixTime($item[0] ?? time(), $item[1] ?? null);
+        }, $timeRanges);
+
+        // sort ascending
+        usort($timeRanges, function($p1, $p2) {
+            return (
+                $p1[0]->diffInSeconds($p2[0], false) < 0
+            ) ? 1 : -1;
+        });
+        $formattedTimeRanges = $timeRanges;
+
+        $total = count($timeRanges);
+        $index = 0;
+        $min = $timeRanges[0][0] ?? null;
+        $max = $timeRanges[0][1] ?? null;
+
+        // store the first time range
+        if ($total) {
+            $result[] = [
+                $min,
+                $max
+            ];
+        }
+        
+        while ($total) {
+            $next = $timeRanges[$index + 1];
+
+            // the starting point of the next time range is inner [<$min>, <$max>]
+            if ($this->isInRange($next[0], [$min, $max])) {
+                // push the time range when the ending point of the next time range comes before <$max>
+                if (! $this->isInRange($next[1], [$min, $max])) {
+                    $result[] = [
+                        $max,
+                        $max = $next[1]
+                    ];
+                } 
+            }
+            // the starting point of the next time range is outer [<$min>, <$max>]
+            else {
+                $result[] = [
+                    $min = $next[0],
+                    $max = $next[1]
+                ];
+            }
+
+            if ( (++$index) == ($total - 1) ) break;
+        }
+
+        return $result;
     }
 
     /**
