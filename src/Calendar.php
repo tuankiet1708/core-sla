@@ -458,7 +458,7 @@ class Calendar {
     }
 
     /**
-     * getElapsedSecondsOnTimeBand
+     * countElapsedSecondsOnTimeBand
      * 
      * @param Carbon $from
      * @param Carbon $to
@@ -466,7 +466,7 @@ class Calendar {
      * @param array &$config
      * @return array
      */
-    protected function getElapsedSecondsOnTimeBand(Carbon $from, Carbon $to, Carbon $date, array &$config) : array
+    protected function countElapsedSecondsOnTimeBand(Carbon $from, Carbon $to, Carbon $date, array &$config) : array
     {
         $secondsExcludes = $secondsIncludes = [];
 
@@ -555,7 +555,7 @@ class Calendar {
 
             if (! $this->isWorkingDay($date, $matches)) continue;
 
-            list ($includes, $excludes, $configMatches) = $this->getElapsedSeconds($from, $to, $date, $matches[0]);
+            list ($includes, $excludes, $configMatches) = $this->executeElapsedSeconds($from, $to, $date, $matches[0]);
 
             $timeMatches[] = $configMatches + ['date' => $date];
 
@@ -567,7 +567,7 @@ class Calendar {
     }
 
     /**
-     * getElapsedSeconds
+     * executeElapsedSeconds
      * 
      * @param Carbon $from
      * @param Carbon $to
@@ -575,7 +575,7 @@ class Calendar {
      * @param array $config
      * @return array
      */
-    protected function getElapsedSeconds(Carbon $from, Carbon $to, Carbon $date, array $config) : array
+    protected function executeElapsedSeconds(Carbon $from, Carbon $to, Carbon $date, array $config) : array
     {
         // flag to indicates whether ($from + $to) are on the same ($date)
         $fromIsOnTheDate = $from->toDateString() === $date->toDateString();
@@ -587,7 +587,7 @@ class Calendar {
 
         // both of ($from + $to) are not on the same date
         if (! $fromIsOnTheDate && ! $toIsOnTheDate) {
-            $result = $this->getElapsedSecondsOnTimeBand($from, $to, $date, $config);
+            $result = $this->countElapsedSecondsOnTimeBand($from, $to, $date, $config);
         }
 
         // $from is on the same date, but $to
@@ -619,7 +619,7 @@ class Calendar {
                 'break' => $breakTimes
             ]);
             
-            $result = $this->getElapsedSecondsOnTimeBand($from, $to, $date, $mergedConfig);
+            $result = $this->countElapsedSecondsOnTimeBand($from, $to, $date, $mergedConfig);
         }
 
         // $to is on the same date, but $from
@@ -650,7 +650,7 @@ class Calendar {
                 'to_minute' => $to->minute,
                 'break' => $breakTimes
             ]);
-            $result = $this->getElapsedSecondsOnTimeBand($from, $to, $date, $mergedConfig);
+            $result = $this->countElapsedSecondsOnTimeBand($from, $to, $date, $mergedConfig);
 
         }
 
@@ -714,7 +714,7 @@ class Calendar {
                 'to_minute' => $to->minute,
                 'break' => $breakTimes
             ]);
-            $result = $this->getElapsedSecondsOnTimeBand($from, $to, $date, $mergedConfig);
+            $result = $this->countElapsedSecondsOnTimeBand($from, $to, $date, $mergedConfig);
         }
 
         return array_merge($result, [$mergedConfig]);
