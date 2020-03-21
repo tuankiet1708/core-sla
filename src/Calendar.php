@@ -396,13 +396,13 @@ class Calendar {
     }
 
     /**
-     * Time elapse in seconds
+     * Elapsed time in seconds
      * 
      * @param Carbon|int $from
      * @param Carbon|int $to
      * @return int
      */
-    public function elapseSeconds($from, $to) : int
+    public function elapsedSeconds($from, $to) : int
     {
         if (! $from instanceof Carbon) {
             $from = $this->createCarbonFromTimestamp($from);
@@ -416,7 +416,7 @@ class Calendar {
     } 
 
     /**
-     * Working time elapse in seconds
+     * Elapsed working time in seconds
      * 
      * @param Carbon|int $from
      * @param Carbon|int $to
@@ -424,7 +424,7 @@ class Calendar {
      * @param array $nonCountingTimeRanges
      * @return int
      */
-    public function elapseSecondsInWorkingTime($from, $to, &$timeMatches = null, array $nonCountingTimeRanges = []) : int 
+    public function elapsedSecondsInWorkingTime($from, $to, &$timeMatches = null, array $nonCountingTimeRanges = []) : int 
     {
         if (! $from instanceof Carbon) {
             $from = $this->createCarbonFromTimestamp($from);
@@ -447,11 +447,11 @@ class Calendar {
 
         // for 247 calendar
         if ($this->is247Calendar()) {
-            $result = $this->calculateElapseSecondsInWorkingTimeFor247Calendar($from, $to, $dates, $timeMatches);
+            $result = $this->calculateElapsedSecondsInWorkingTimeFor247Calendar($from, $to, $dates, $timeMatches);
         }
         // for custom calendar
         else {
-            $result = $this->calculateElapseSecondsInWorkingTimeForCustomCalendar($from, $to, $dates, $timeMatches); 
+            $result = $this->calculateElapsedSecondsInWorkingTimeForCustomCalendar($from, $to, $dates, $timeMatches); 
         }
 
         return $result;
@@ -533,7 +533,7 @@ class Calendar {
     }
 
     /**
-     * calculateElapseSecondsInWorkingTimeForCustomCalendar
+     * calculateElapsedSecondsInWorkingTimeForCustomCalendar
      * 
      * @param Carbon $from
      * @param Carbon $to
@@ -541,7 +541,7 @@ class Calendar {
      * @param mixed &$timeMatches
      * @return int
      */
-    protected function calculateElapseSecondsInWorkingTimeForCustomCalendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null) : int
+    protected function calculateElapsedSecondsInWorkingTimeForCustomCalendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null) : int
     {
         // for making an exclusion of no working seconds
         $secondsExcludes = [];
@@ -721,7 +721,7 @@ class Calendar {
     }
 
     /**
-     * calculateElapseSecondsInWorkingTimeFor247Calendar
+     * calculateElapsedSecondsInWorkingTimeFor247Calendar
      * 
      * @param Carbon $from
      * @param Carbon $to
@@ -729,7 +729,7 @@ class Calendar {
      * @param mixed &$timeMatches
      * @return int
      */
-    protected function calculateElapseSecondsInWorkingTimeFor247Calendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null) : int
+    protected function calculateElapsedSecondsInWorkingTimeFor247Calendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null) : int
     {
         // for making an exclusion of no working seconds
         $secondsExcludes = [];
@@ -904,7 +904,7 @@ class Calendar {
             // try to add seconds
             $try = $backtrace->copy()->addSeconds($target);
             // run a test
-            $test = $this->elapseSecondsInWorkingTime($from, $try);
+            $test = $this->elapsedSecondsInWorkingTime($from, $try);
 
             if ($test >= $target) {
                 $result = $try;
@@ -947,7 +947,7 @@ class Calendar {
             $midSec = (int) floor($start->diffInSeconds($finish, false) / 2);
             $mid = $start->copy()->addSeconds($midSec);
 
-            $test = $this->elapseSecondsInWorkingTime($from, $mid);
+            $test = $this->elapsedSecondsInWorkingTime($from, $mid);
 
             if ($test === $target || $midSec == 0) {
                 return $mid;
