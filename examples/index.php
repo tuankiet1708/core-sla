@@ -17,22 +17,25 @@ $from = Carbon::parse('2019-10-21 09:45', $calendar->timezone());
 $to = Carbon::parse('2019-10-23 13:45', $calendar->timezone());
 $time = $from->timestamp;
 $pausingPoints = [
-    [$time,         $time + 60],
-    [$time + 720,   $time + 780],
-    [$time - 120,   $time + 360],
-    [$time - 240,   $time + 50],
-    [$time + 10,    $time + 30],
-    [$time - 300,   $time + 40],
+    // [$time - 3600,  $time - 3000],
+    // [$time - 120,    $time + 86400],
+    [$time + 86410, null],
+    // [$time,         $time + 60],
+    // [$time + 720,   $time + 780],
+    // [$time - 120,   $time + 360],
+    // [$time - 240,   $time + 50],
+    // [$time + 10,    $time + 30],
+    // [$time - 300,   $time + 40],
 ];
 $clean = $calendar->normalizeOverlappedTimeRanges($pausingPoints, $formattedTimeRanges);
 $clean = array_map(function($item) {
     return [
         'from' => $item[0]->toDateTimeString(),
-        'to' => $item[1]->toDateTimeString()
+        'to' => empty($item[1]) ? null : $item[1]->toDateTimeString()
     ];
 }, $clean);
 
-$elapsed = $calendar->elapseSecondsInWorkingTime($from, $to, $timeMatches);
+$elapsed = $calendar->elapsedSecondsInWorkingTime($from, $to, $timeMatches, $pausingPoints);
 
 dd(
     "\n\n ==== timeMatches ==== \n\n",
@@ -90,15 +93,15 @@ $to = Carbon::parse('2019-11-11 13:45', $calendar->timezone());
 // $to = Carbon::createFromTimestamp(1572514410, $calendar->timezone());
 
 $timeMatches = [];
-$elapse = $calendar->elapseSecondsInWorkingTime($from, $to, $timeMatches);
+$elapsed = $calendar->elapsedSecondsInWorkingTime($from, $to, $timeMatches);
 
 // dd($timeMatches);
 
 // Table of elapsed 
-load_view_path(__DIR__ . '/elapsed_table.php', compact('calendar', 'from', 'to', 'timeMatches', 'elapse'));
+load_view_path(__DIR__ . '/elapsed_table.php', compact('calendar', 'from', 'to', 'timeMatches', 'elapsed'));
 
 // Estimate what timestamp matches the target
-$target = $elapse;
+$target = $elapsed;
 $estimate = $calendar->estimateTimestampMatchesTargetTotal($from, $target);
 echo "<b>Estimate</b>\n";
 echo "From " . $from->toDateTimeString();
