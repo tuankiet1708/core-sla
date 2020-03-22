@@ -242,9 +242,9 @@ class Calendar {
 
         // now or taking time from haystack 
         $time = $haystack ? $haystack->copy() : Carbon::now($this->timezone());
-
-        return $time->diffInSeconds($range[0], false) <= 0 
-            && $time->diffInSeconds($range[1], false) >= 0; 
+        
+        return $this->compareDateTime($time, $range[0]) >= 0
+            && $this->compareDateTime($time, $range[1]) <= 0;
     }
 
     /**
@@ -440,7 +440,7 @@ class Calendar {
             $date = isset($date) ? $date->addDay() : $from->copy();
             $date->hour = 0; $date->minute = 0; $date->second = 0;
 
-            if ($date->diffInSeconds($to, false) < 0) break;
+            if ($this->compareDateTime($date, $to) > 0) break;
 
             $dates[] = $date->copy();
         }
@@ -451,7 +451,7 @@ class Calendar {
         }
         // for custom calendar
         else {
-            $result = $this->calculateElapsedSecondsInWorkingTimeForCustomCalendar($from, $to, $dates, $timeMatches); 
+            $result = $this->calculateElapsedSecondsInWorkingTimeForCustomCalendar($from, $to, $dates, $timeMatches, $nonCountingTimeRanges); 
         }
 
         return $result;
@@ -464,9 +464,10 @@ class Calendar {
      * @param Carbon $to
      * @param Carbon $date
      * @param array &$config
+     * @param array $nonCountingTimeRanges
      * @return array
      */
-    protected function countElapsedSecondsOnTimeBand(Carbon $from, Carbon $to, Carbon $date, array &$config) : array
+    protected function countElapsedSecondsOnTimeBand(Carbon $from, Carbon $to, Carbon $date, array &$config, array $nonCountingTimeRanges) : array
     {
         $secondsExcludes = $secondsIncludes = [];
 
@@ -489,12 +490,12 @@ class Calendar {
             $dayFrom = $time->copy()->addHours($dayConfig['from_hour'])->addMinutes($dayConfig['from_minute']);
             $dayTo = $time->copy()->addHours($dayConfig['to_hour'])->addMinutes($dayConfig['to_minute']);
 
-            // $from comes before the finish time of the day
-            if ($from->diffInSeconds($dayTo, false) < 0) {
+            // $dayTo < $from
+            if ($this->compareDateTime($from, $dayTo) > 0) {
                 return [[0], [0]];
             }
-            // $from comes after the start time of the day
-            elseif ($from->diffInSeconds($dayFrom, false) > 0) {
+            // $from < $dayFrom
+            elseif ($this->compareDateTime($from, $dayFrom) < 0) {
                 $config['from_hour'] = $dayConfig['from_hour'];
                 $config['from_minute'] = $dayConfig['from_minute'];
             }
@@ -511,12 +512,12 @@ class Calendar {
             $dayFrom = $time->copy()->addHours($dayConfig['from_hour'])->addMinutes($dayConfig['from_minute']);
             $dayTo = $time->copy()->addHours($dayConfig['to_hour'])->addMinutes($dayConfig['to_minute']);
 
-            // $to comes after the start time of the day
-            if ($to->diffInSeconds($dayFrom, false) > 0) {
+            // $to < $dayFrom
+            if ($this->compareDateTime($to, $dayFrom) < 0) {
                 return [[0], [0]];
             }
-            // $to comes before the finish time of the day
-            elseif ($to->diffInSeconds($dayTo, false) < 0) {
+            // $dayTo < $to
+            elseif ($this->compareDateTime($to, $dayTo) > 0) {
                 $config['to_hour'] = $dayConfig['to_hour'];
                 $config['to_minute'] = $dayConfig['to_minute'];
             }
@@ -539,9 +540,10 @@ class Calendar {
      * @param Carbon $to
      * @param array $dates
      * @param mixed &$timeMatches
+     * @param array $nonCountingTimeRanges
      * @return int
      */
-    protected function calculateElapsedSecondsInWorkingTimeForCustomCalendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null) : int
+    protected function calculateElapsedSecondsInWorkingTimeForCustomCalendar(Carbon $from, Carbon $to, array $dates, &$timeMatches = null, array $nonCountingTimeRanges) : int
     {
         // for making an exclusion of no working seconds
         $secondsExcludes = [];
@@ -555,7 +557,7 @@ class Calendar {
 
             if (! $this->isWorkingDay($date, $matches)) continue;
 
-            list ($includes, $excludes, $configMatches) = $this->executeElapsedSecondsInWorkingTime($from, $to, $date, $matches[0]);
+            list ($includes, $excludes, $configMatches) = $this->executeElapsedSecondsInWorkingTime($from, $to, $date, $matches[0], $nonCountingTimeRanges);
 
             $timeMatches[] = $configMatches + ['date' => $date];
 
@@ -573,9 +575,10 @@ class Calendar {
      * @param Carbon $to
      * @param Carbon $date
      * @param array $config
+     * @param array $nonCountingTimeRanges
      * @return array
      */
-    protected function executeElapsedSecondsInWorkingTime(Carbon $from, Carbon $to, Carbon $date, array $config) : array
+    protected function executeElapsedSecondsInWorkingTime(Carbon $from, Carbon $to, Carbon $date, array $config, array $nonCountingTimeRanges) : array
     {
         // flag to indicates whether ($from + $to) are on the same ($date)
         $fromIsOnTheDate = $from->toDateString() === $date->toDateString();
@@ -587,7 +590,7 @@ class Calendar {
 
         // both of ($from + $to) are not on the same date
         if (! $fromIsOnTheDate && ! $toIsOnTheDate) {
-            $result = $this->countElapsedSecondsOnTimeBand($from, $to, $date, $config);
+            $result = $this->countElapsedSecondsOnTimeBand($from, $to, $date, $config, $nonCountingTimeRanges);
         }
 
         // $from is on the same date, but $to
@@ -596,10 +599,10 @@ class Calendar {
                 list($breakTimeFrom, $breakTimeTo) = $this->createCarbonRangeOfTime($date, $break);
 
                 // $from is in the range of $break
-                // also comes after the point of $breakTimeTo
+                // and $from < $breakTimeTo
                 if (
                     $this->isInRange($from, [$breakTimeFrom, $breakTimeTo])
-                    && $from->diffInSeconds($breakTimeTo, false) > 0
+                    && $this->compareDateTime($from, $breakTimeTo) < 0
                 ) {
                     $breakTimes[] = array_merge($break, [
                         'from_hour' => $from->hour,
@@ -607,8 +610,8 @@ class Calendar {
                     ]);
                 }
                 // $from is not in the range of $break
-                // also comes after the point of $breakTimeFrom
-                elseif ($from->diffInSeconds($breakTimeFrom, false) >= 0) {
+                // and $from <= $breakTimeFrom
+                elseif ($this->compareDateTime($from, $breakTimeFrom) <= 0) {
                     $breakTimes[] = $break;
                 }                
             }
@@ -619,7 +622,7 @@ class Calendar {
                 'break' => $breakTimes
             ]);
             
-            $result = $this->countElapsedSecondsOnTimeBand($from, $to, $date, $mergedConfig);
+            $result = $this->countElapsedSecondsOnTimeBand($from, $to, $date, $mergedConfig, $nonCountingTimeRanges);
         }
 
         // $to is on the same date, but $from
@@ -628,10 +631,10 @@ class Calendar {
                 list($breakTimeFrom, $breakTimeTo) = $this->createCarbonRangeOfTime($date, $break);
 
                 // $to is in the range of $break
-                // also comes before the point of $breakTimeFrom
+                // and $breakTimeFrom < $to
                 if (
                     $this->isInRange($to, [$breakTimeFrom, $breakTimeTo])
-                    && $to->diffInSeconds($breakTimeFrom, false) < 0
+                    && $this->compareDateTime($to, $breakTimeFrom) > 0
                 ) {
                     $breakTimes[] = array_merge($break, [
                         'to_hour' => $to->hour,
@@ -639,8 +642,8 @@ class Calendar {
                     ]);
                 }
                 // $to is not in the range of $break
-                // also comes before the point of $breakTimeTo 
-                elseif ($to->diffInSeconds($breakTimeTo, false) <= 0) {
+                // and $breakTimeTo <= $to
+                elseif ($this->compareDateTime($to, $breakTimeTo) >= 0) {
                     $breakTimes[] = $break;
                 }                
             }
@@ -650,7 +653,7 @@ class Calendar {
                 'to_minute' => $to->minute,
                 'break' => $breakTimes
             ]);
-            $result = $this->countElapsedSecondsOnTimeBand($from, $to, $date, $mergedConfig);
+            $result = $this->countElapsedSecondsOnTimeBand($from, $to, $date, $mergedConfig, $nonCountingTimeRanges);
 
         }
 
@@ -676,10 +679,10 @@ class Calendar {
                 }
 
                 // $from is in the range of $break
-                // also comes after the point of $breakTimeTo
+                // and $from < $breakTimeTo
                 elseif (
                     $this->isInRange($from, $range)
-                    && $from->diffInSeconds($breakTimeTo, false) > 0
+                    && $this->compareDateTime($from, $breakTimeTo) < 0 
                 ) {
                     $breakTimes[] = array_merge($break, [
                         'from_hour' => $from->hour,
@@ -687,21 +690,21 @@ class Calendar {
                     ]);
                 }
                 // $to is in the range of $break
-                // also comes before the point of $breakTimeFrom
+                // and $breakTimeFrom < $to
                 elseif (
                     $this->isInRange($to, $range)
-                    && $to->diffInSeconds($breakTimeFrom, false) < 0
+                    && $this->compareDateTime($to, $breakTimeFrom) > 0
                 ) {
                     $breakTimes[] = array_merge($break, [
                         'to_hour' => $to->hour,
                         'to_minute' => $to->minute,
                     ]);
                 }
-                // $from comes after the point of $breakTimeFrom
-                // and $to comes before the point of $breakTimeTo
+                // $from <= $breakTimeFrom
+                // and $breakTimeTo <= $to
                 elseif (
-                    $from->diffInSeconds($breakTimeFrom, false) >= 0
-                    && $to->diffInSeconds($breakTimeTo, false) <= 0
+                    $this->compareDateTime($from, $breakTimeFrom) <= 0
+                    && $this->compareDateTime($to, $breakTimeTo) >= 0
                 ) {
                     $breakTimes[] = $break;
                 }                
@@ -714,7 +717,7 @@ class Calendar {
                 'to_minute' => $to->minute,
                 'break' => $breakTimes
             ]);
-            $result = $this->countElapsedSecondsOnTimeBand($from, $to, $date, $mergedConfig);
+            $result = $this->countElapsedSecondsOnTimeBand($from, $to, $date, $mergedConfig, $nonCountingTimeRanges);
         }
 
         return array_merge($result, [$mergedConfig]);
@@ -928,7 +931,7 @@ class Calendar {
         // sort ascending
         usort($timeRanges, function($p1, $p2) {
             return (
-                $p1[0]->diffInSeconds($p2[0], false) < 0
+                $this->compareDateTime($p1[0], $p2[0]) > 0
             ) ? 1 : -1;
         });
         $formattedTimeRanges = $timeRanges;
@@ -1071,7 +1074,7 @@ class Calendar {
      */
     protected function binaryEstimate(Carbon $from, Carbon $start, Carbon $finish, int $target, &$test) 
     {
-        if ($start->diffInSeconds($finish, false) >= 0) {
+        if ($this->compareDateTime($start, $finish) <= 0) {
             $midSec = (int) floor($start->diffInSeconds($finish, false) / 2);
             $mid = $start->copy()->addSeconds($midSec);
 

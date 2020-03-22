@@ -18,7 +18,7 @@ $to = Carbon::parse('2019-10-23 13:45', $calendar->timezone());
 $time = $from->timestamp;
 $pausingPoints = [
     // [$time - 3600,  $time - 3000],
-    // [$time - 120,    $time + 86400],
+    [$time - 120,    $time + 86400],
     [$time + 86410, null],
     // [$time,         $time + 60],
     // [$time + 720,   $time + 780],
