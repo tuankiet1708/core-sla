@@ -58,7 +58,7 @@
                     <?php 
                         foreach ((array) array_get($time, 'skip') as $skip) {
                             echo $skip[0]->format('H:i:s') . ' - ' .
-                                (empty($skip[1]) ? '∞' : $skip[1]->format('H:i:ss')) . '<br/>';    
+                                (empty($skip[1]) ? '∞' : $skip[1]->format('H:i:s')) . '<br/>';    
                         }
                     ?>
                 </td>
