@@ -5,50 +5,11 @@ use Leo\SLA\Calendar;
 use Carbon\Carbon;
 
 // Load a calendar config
-$config = config_get('calendar.default');
-// $config = config_get('calendar.8_5_calendar');
+// $config = config_get('calendar.default');
+$config = config_get('calendar.8_5_calendar');
 
 // initialize a instance of Calendar
 $calendar = new Calendar($config); 
-
-// ======> TEST
-// Elapsed caculation
-$from = Carbon::parse('2019-10-21 09:45', $calendar->timezone());
-$to = Carbon::parse('2019-10-23 13:45', $calendar->timezone());
-$time = $from->timestamp;
-$pausingPoints = [
-    // [$time - 3600,  $time - 3000],
-    [$time - 120,    $time + 86400],
-    [$time + 86410, null],
-    // [$time,         $time + 60],
-    // [$time + 720,   $time + 780],
-    // [$time - 120,   $time + 360],
-    // [$time - 240,   $time + 50],
-    // [$time + 10,    $time + 30],
-    // [$time - 300,   $time + 40],
-];
-$clean = $calendar->normalizeOverlappedTimeRanges($pausingPoints, $formattedTimeRanges);
-$clean = array_map(function($item) {
-    return [
-        'from' => $item[0]->toDateTimeString(),
-        'to' => empty($item[1]) ? null : $item[1]->toDateTimeString()
-    ];
-}, $clean);
-
-$elapsed = $calendar->elapsedSecondsInWorkingTime($from, $to, $timeMatches, $pausingPoints);
-
-dd(
-    "\n\n ==== timeMatches ==== \n\n",
-    $timeMatches, 
-    "\n\n ==== elapsed ==== \n\n",
-    $elapsed, 
-    "\n\n ==== clean ==== \n\n",
-    $clean, 
-    "\n\n ==== formattedTimeRanges ==== \n\n",
-    $formattedTimeRanges
-);
-
-// <====== TEST
 
 $time = Carbon::createFromTimestamp(time(), $calendar->timezone());
 // $time = Carbon::parse('2019-01-01 00:00', $calendar->timezone());
@@ -86,6 +47,7 @@ load_view_path(__DIR__ . '/workdays_table.php', compact('calendar', 'time', 'wor
 // ▒█▄▄█ ▒█░▒█ ░▒█▒█░ ▒█▄▄█ ▒█▒█▒█ ▒█░░░ ▒█▀▀▀ ▒█░▒█ 
 // ▒█░▒█ ▒█▄▄▀ ░░▀▄▀░ ▒█░▒█ ▒█░░▀█ ▒█▄▄█ ▒█▄▄▄ ▒█▄▄▀ 
 
+// ================================================>
 // Elapsed caculation
 $from = Carbon::parse('2019-10-21 09:45', $calendar->timezone());
 // $to = Carbon::createFromTimestamp(time(), $calendar->timezone());
@@ -109,3 +71,21 @@ echo " will elapse ";
 echo "<b>" . $calendar->secondsForHumans($target) . "</b>";
 echo " at around ";
 echo "<b>" . $estimate->toDateTimeString() . "</b>.";
+
+
+// ================================================> 
+// Elapsed caculation with NON-COUNTING TIME RANGES 
+$timeMatches = [];
+$from = Carbon::parse('2019-10-21 09:45', $calendar->timezone());
+$to = Carbon::parse('2019-10-23 13:45', $calendar->timezone());
+$time = $from->timestamp;
+$nonCountingTimeRanges = [
+    [$time,            $time + 3600],    
+    // [$time,         $time + 60],
+    // [$time + 720,   $time + 780],
+    // [$time + 10,    $time + 30],
+    [$time + 86410,    null],
+];
+$elapsed = $calendar->elapsedSecondsInWorkingTime($from, $to, $timeMatches, $nonCountingTimeRanges);
+$withNonCountingTimeRanges = true;
+load_view_path(__DIR__ . '/elapsed_table.php', compact('calendar', 'from', 'to', 'timeMatches', 'elapsed', 'withNonCountingTimeRanges'));

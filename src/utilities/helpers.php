@@ -644,6 +644,6 @@ if (! function_exists('load_view_path')) {
     function load_view_path(string $view, array $argument = [])
     {
         extract($argument);
-        include_once($view);
+        include($view);
     }
 }

@@ -1,6 +1,6 @@
-<table border="1" cellpadding="10" style="min-width: 350px; width: 50vw; margin: 10px 0px;">
+<table border="1" cellpadding="10" style="min-width: 768px; width: 70vw; margin: 10px 0px;">
     <caption>
-        <b>Elapsed Working Time</b>
+        <b>Elapsed Working Time <?php echo empty($withNonCountingTimeRanges) ? '' : ' with Non-counting Time Ranges' ?></b>
         <br/>
         <span>
             <b>From</b> <?php echo $from->toDateTimeString() ?> |
@@ -11,6 +11,7 @@
         <th>Date</th>
         <th>Working Time</th>
         <th>Break Time</th>
+        <th>Non-counting Time</th>
         <th>Total</th>
     </thead>
     <tbody>
@@ -53,20 +54,19 @@
                     ?>
                 </td>
 
+                <td>
+                    <?php 
+                        foreach ((array) array_get($time, 'skip') as $skip) {
+                            echo $skip[0]->format('H:i:s') . ' - ' .
+                                (empty($skip[1]) ? '∞' : $skip[1]->format('H:i:ss')) . '<br/>';    
+                        }
+                    ?>
+                </td>
+
                 <td align="right">
                     <?php 
-                        $partialFrom = $time['date']->copy()->addHours($time['from_hour'])->addMinutes($time['from_minute']);
-
-                        if (isset($timeMatches[$index + 1]) && $time['to_hour'] === 0 && $time['to_minute'] === 0) {
-                            $partialTo = $time['date']->copy()->addDay();
-                        } else {
-                            $partialTo = $time['date']->copy()->addHours($time['to_hour'])->addMinutes($time['to_minute']);
-                        }
-                        
-                        $total = $calendar->elapsedSecondsInWorkingTime($partialFrom, $partialTo);
-
-                        echo "<b>" . $calendar->secondsForHumans($total) . "</b>";
-                        echo "<br/>($total seconds)";
+                        echo "<b>" . $calendar->secondsForHumans($tmp = $time['partial_elapsed']) . "</b>";
+                        echo "<br/>($tmp seconds)";
                     ?>
                 </td>
             </tr>  
@@ -76,7 +76,7 @@
     <tfoot>
         <tr style="font-weight: bold">
             <td align="right"><b>Total</b></td>
-            <td colspan="3" align="right">
+            <td colspan="4" align="right">
                 <?php echo $calendar->secondsForHumans($elapsed) ?>     
                 <br/> 
                 (<?php echo $elapsed ?> seconds)                         

@@ -264,10 +264,14 @@ class Calendar {
 
         $result = [];
 
-        foreach (['from', 'to'] as $point) {
-            $result[] = $time->copy()
-                             ->addHours($timeRange["{$point}_hour"])
-                             ->addMinutes($timeRange["{$point}_minute"]);
+        $result[] = $time->copy()
+                        ->addHours($timeRange['from_hour'])
+                        ->addMinutes($timeRange['from_minute']);
+
+        if ($timeRange['to_hour'] === 0 && $timeRange['to_minute'] === 0) {
+            $result[] = $time->copy()->addDay();
+        } else {
+            $result[] = $time->copy()->addHours($timeRange['to_hour'])->addMinutes($timeRange['to_minute']);
         }
 
         return $result;
@@ -464,12 +468,13 @@ class Calendar {
      * @param Carbon $to
      * @param Carbon $date
      * @param array &$config
-     * @param array $nonCountingTimeRanges
+     * @param array &$nonCountingTimeRanges
      * @return array
      */
-    protected function countElapsedSecondsOnTimeBand(Carbon $from, Carbon $to, Carbon $date, array &$config, array $nonCountingTimeRanges) : array
+    protected function countElapsedSecondsOnTimeBand(Carbon $from, Carbon $to, Carbon $date, array &$config, array &$nonCountingTimeRanges) : array
     {
-        $secondsExcludes = $secondsIncludes = [];
+        $secondsExcludes = $secondsIncludes = [];        
+        $config['partial_elapsed'] = 0;
 
         // find the day configuration
         $dayConfig = array_values(array_filter(
@@ -488,7 +493,12 @@ class Calendar {
             $time->hour = 0; $time->minute = 0; $time->second = 0;
 
             $dayFrom = $time->copy()->addHours($dayConfig['from_hour'])->addMinutes($dayConfig['from_minute']);
-            $dayTo = $time->copy()->addHours($dayConfig['to_hour'])->addMinutes($dayConfig['to_minute']);
+
+            if ($dayConfig['to_hour'] === 0 && $dayConfig['to_minute'] === 0) {
+                $dayTo = $time->copy()->addDay();
+            } else {
+                $dayTo = $time->copy()->addHours($dayConfig['to_hour'])->addMinutes($dayConfig['to_minute']);
+            }
 
             // $dayTo < $from
             if ($this->compareDateTime($from, $dayTo) > 0) {
@@ -510,7 +520,12 @@ class Calendar {
             $time->hour = 0; $time->minute = 0; $time->second = 0;
 
             $dayFrom = $time->copy()->addHours($dayConfig['from_hour'])->addMinutes($dayConfig['from_minute']);
-            $dayTo = $time->copy()->addHours($dayConfig['to_hour'])->addMinutes($dayConfig['to_minute']);
+            
+            if ($dayConfig['to_hour'] === 0 && $dayConfig['to_minute'] === 0) {
+                $dayTo = $time->copy()->addDay();
+            } else {
+                $dayTo = $time->copy()->addHours($dayConfig['to_hour'])->addMinutes($dayConfig['to_minute']);
+            }
 
             // $to < $dayFrom
             if ($this->compareDateTime($to, $dayFrom) < 0) {
@@ -526,11 +541,46 @@ class Calendar {
         //
         $secondsIncludes[] = $this->diffInSecondsByFromToHourMinute($config);
 
+        // foreach ((array) array_get($config, 'break') as $break) {
+        //     $secondsExcludes[] = $this->diffInSecondsByFromToHourMinute($break);
+        // }
+
+        // revert the format 
+        $nonCountingTimeRanges = array_map(function($item) {
+            return [
+                $item[0]->timestamp,
+                empty($item[1]) ? null : $item[1]->timestamp,
+            ];
+        }, $nonCountingTimeRanges);
+
+        // push breaks to nonCountingTimeRanges
         foreach ((array) array_get($config, 'break') as $break) {
-            $secondsExcludes[] = $this->diffInSecondsByFromToHourMinute($break);
+            $breakFrom = $date->copy()->addHours($break['from_hour'])->addMinutes($break['from_minute']);
+            
+            if ($break['to_hour'] === 0 && $break['to_minute'] === 0) {
+                $breakTo = $date->copy()->addDay();
+            } else {
+                $breakTo = $date->copy()->addHours($break['to_hour'])->addMinutes($break['to_minute']);
+            }
+
+            $nonCountingTimeRanges[] = [
+                $breakFrom->timestamp, 
+                $breakTo->timestamp
+            ];
         }
 
-        return [$secondsIncludes, $secondsExcludes];
+        // normalize
+        $nonCountingTimeRanges = $this->normalizeOverlappedTimeRanges($nonCountingTimeRanges);
+
+        // merge with non-counting time ranges
+        $indication = $this->mergeWithNonCountingTimeRanges(
+            $config,
+            $nonCountingTimeRanges,
+            $secondsExcludes,
+            $secondsIncludes
+        );
+
+        return [$secondsIncludes, $secondsExcludes, $indication ?? null];
     }
 
     /**
@@ -551,18 +601,23 @@ class Calendar {
         // for making a sum of working seconds
         $secondsIncludes = [];
 
+        // normalize
+        $nonCountingTimeRanges = $this->normalizeOverlappedTimeRanges($nonCountingTimeRanges);
+
         foreach ($dates as $index => $date) {
             // reset
             $matches = [];
 
             if (! $this->isWorkingDay($date, $matches)) continue;
 
-            list ($includes, $excludes, $configMatches) = $this->executeElapsedSecondsInWorkingTime($from, $to, $date, $matches[0], $nonCountingTimeRanges);
+            list ($includes, $excludes, $configMatches, $indication) = $this->executeElapsedSecondsInWorkingTime($from, $to, $date, $matches[0], $nonCountingTimeRanges);
 
-            $timeMatches[] = $configMatches + ['date' => $date];
+            $timeMatches[] = $configMatches;
 
             $secondsExcludes = array_merge($secondsExcludes, $excludes);
             $secondsIncludes = array_merge($secondsIncludes, $includes);
+
+            if ($indication === -1) break;
         }        
 
         return array_sum($secondsIncludes) - array_sum($secondsExcludes);
@@ -575,10 +630,10 @@ class Calendar {
      * @param Carbon $to
      * @param Carbon $date
      * @param array $config
-     * @param array $nonCountingTimeRanges
+     * @param array &$nonCountingTimeRanges
      * @return array
      */
-    protected function executeElapsedSecondsInWorkingTime(Carbon $from, Carbon $to, Carbon $date, array $config, array $nonCountingTimeRanges) : array
+    protected function executeElapsedSecondsInWorkingTime(Carbon $from, Carbon $to, Carbon $date, array $config, array &$nonCountingTimeRanges) : array
     {
         // flag to indicates whether ($from + $to) are on the same ($date)
         $fromIsOnTheDate = $from->toDateString() === $date->toDateString();
@@ -586,11 +641,14 @@ class Calendar {
 
         // pool of break times
         $breakTimes = [];
+
+        // merge with $date
+        $config['date'] = $date;
         $mergedConfig = $config;
 
         // both of ($from + $to) are not on the same date
         if (! $fromIsOnTheDate && ! $toIsOnTheDate) {
-            $result = $this->countElapsedSecondsOnTimeBand($from, $to, $date, $config, $nonCountingTimeRanges);
+            $result = $this->countElapsedSecondsOnTimeBand($from, $to, $date, $mergedConfig, $nonCountingTimeRanges);
         }
 
         // $from is on the same date, but $to
@@ -720,7 +778,12 @@ class Calendar {
             $result = $this->countElapsedSecondsOnTimeBand($from, $to, $date, $mergedConfig, $nonCountingTimeRanges);
         }
 
-        return array_merge($result, [$mergedConfig]);
+        return [
+            $result[0], // secondIncludes
+            $result[1], // secondExcludes
+            $mergedConfig,
+            $result[2] ?? null, // indication
+        ];
     }
 
     /**
@@ -751,11 +814,13 @@ class Calendar {
      * @param array &$dayConfig
      * @param array &$nonCountingTimeRanges
      * @param array &$secondsExcludes
+     * @param array $secondsIncludes
      * @return int 0: empty non-counting, 1: indicate calculation should be continued, -1: indicate calculation should be stopped
      */
-    protected function mergeWithNonCountingTimeRanges(array &$dayConfig, array &$nonCountingTimeRanges, array &$secondsExcludes) : int
+    protected function mergeWithNonCountingTimeRanges(array &$dayConfig, array &$nonCountingTimeRanges, array &$secondsExcludes, array $secondsIncludes) : int
     {
-        $result = 0;
+        $result = 0; $partialExcludes = [];
+        $dayConfig['partial_elapsed'] = array_sum($secondsIncludes) - array_sum($partialExcludes);
 
         // empty non-counting
         if (empty($nonCountingTimeRanges)) return $result;
@@ -785,9 +850,15 @@ class Calendar {
                 break;
             }
 
+            // $range[0] is the past when compared with $from
+            if ($this->compareDateTime($range[0], $from) < 0) {
+                $range[0] = $from->copy();
+            }
+
             // calculation should be stopped 
             if (empty($range[1])) {                
-                $secondsExcludes[] = $range[0]->diffInSeconds($to);
+                $secondsExcludes[] = $exclude = $range[0]->diffInSeconds($to);
+                $partialExcludes[] = $exclude;
                 
                 // add skip
                 $dayConfig['skip'][] = [$range[0]];
@@ -796,11 +867,6 @@ class Calendar {
                 array_splice($nonCountingTimeRanges, $index);
 
                 break;
-            }
-
-            // $range[0] is the past when compared with $from
-            if ($this->compareDateTime($range[0], $from) < 0) {
-                $range[0] = $from->copy();
             }
 
             // $range[1] is the future when compared with $to
@@ -815,7 +881,8 @@ class Calendar {
             $diff = $nonCountingTimeRanges[$index][0]->diffInSeconds($nonCountingTimeRanges[$index][1]);
 
             if ($diff !== 0) {
-                $secondsExcludes[] = $nonCountingTimeRanges[$index][0]->diffInSeconds($nonCountingTimeRanges[$index][1]);
+                $secondsExcludes[] = $exclude = $nonCountingTimeRanges[$index][0]->diffInSeconds($nonCountingTimeRanges[$index][1]);
+                $partialExcludes[] = $exclude;
 
                 $dayConfig['skip'][] = [
                     $nonCountingTimeRanges[$index][0],
@@ -823,6 +890,8 @@ class Calendar {
                 ];
             }
         }
+
+        $dayConfig['partial_elapsed'] = array_sum($secondsIncludes) - array_sum($partialExcludes);
 
         $nonCountingTimeRanges = array_values(array_filter($nonCountingTimeRanges));
 
@@ -853,9 +922,11 @@ class Calendar {
 
         foreach ($dates as $index => $date) {
             $secondsIncludes[] = 86400; // seconds
+            $partialExcludes = [];
 
             if ($index === 0) {
-                $secondsExcludes[] = $date->diffInSeconds($from);
+                $secondsExcludes[] = $exclude = $date->diffInSeconds($from);
+                $partialExcludes[] = $exclude;
               
                 $timeMatches[] = [
                     'date' => $date,
@@ -868,7 +939,8 @@ class Calendar {
             } 
             
             if ($index === count($dates) - 1) {
-                $secondsExcludes[] = $date->copy()->addDay()->diffInSeconds($to);
+                $secondsExcludes[] = $exclude = $date->copy()->addDay()->diffInSeconds($to);
+                $partialExcludes[] = $exclude;
 
                 // both of ($from + $to) are on the same date
                 if ($index === 0) {
@@ -901,7 +973,8 @@ class Calendar {
             $indication = $this->mergeWithNonCountingTimeRanges(
                 $timeMatches[count($timeMatches) - 1], 
                 $nonCountingTimeRanges, 
-                $secondsExcludes
+                $secondsExcludes,
+                [86400 - array_sum($partialExcludes)]
             );
 
             if ($indication === -1) {
@@ -975,10 +1048,19 @@ class Calendar {
             if ( (++$index) == ($total - 1) ) break;
         }
 
-        // assign null
-        if ($total && $timeRanges[$total - 1][2]) {
-            $result[$total - 1][1] = null;
-        }
+        $result = array_map(function($item) {                      
+            $diff = $item[0]->diffInSeconds($item[1] ?? $item[0]);
+
+            return [
+                $item[0],     
+                
+                // $diff == 0 
+                // => $item[0] == $item[1] 
+                // => the point where it is being skipped without knowing when to be continued  
+                // then assign <null> - a point indiciates the calculation should be stopped
+                $diff === 0 ? null : $item[1], 
+            ];
+        }, $result);
 
         return $result;
     }
@@ -1010,9 +1092,13 @@ class Calendar {
                      ->addHours($config['from_hour'])
                      ->addMinutes($config['from_minute']);
 
-        $to = $time->copy()
-                   ->addHours($config['to_hour'])
-                   ->addMinutes($config['to_minute']);
+        if ($config['to_hour'] === 0 && $config['to_minute'] === 0) {
+            $to = $time->copy()->addDay();
+        } else {
+            $to = $time->copy()
+                        ->addHours($config['to_hour'])
+                        ->addMinutes($config['to_minute']);
+        }
 
         return $from->diffInSeconds($to, $absolute);
     }
